@@ -165,8 +165,29 @@ export async function reauthBegin(issue: AuthIssueSession = 'token') {
   return handleAuthResponse(json)
 }
 
-export async function authValid() {
-  return request<void>('/v1/auth/valid')
+export async function logout() {
+  const headers = new Headers()
+  const token = tokenStore.get()
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+  const sessionHeader = authHeaders()
+  if (sessionHeader) {
+    Object.entries(sessionHeader).forEach(([key, value]) => headers.set(key, value))
+  }
+
+  const response = await fetch(`${baseUrl}/v1/logout`, {
+    method: 'GET',
+    headers,
+    credentials: 'include',
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(`Request failed (${response.status}): ${text}`)
+  }
+
+  return undefined
 }
 
 export function clearAuthToken() {

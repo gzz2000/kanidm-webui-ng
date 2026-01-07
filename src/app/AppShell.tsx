@@ -49,7 +49,13 @@ export default function AppShell() {
             <span>
               {user ? `${user.displayName} (${user.name})` : t('shell.sameOrigin')}
             </span>
-            <button className="link-button" type="button" onClick={signOut}>
+            <button
+              className="link-button"
+              type="button"
+              onClick={() => {
+                void signOut()
+              }}
+            >
               {t('shell.signOut')}
             </button>
           </div>

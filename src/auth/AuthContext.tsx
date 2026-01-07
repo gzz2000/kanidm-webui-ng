@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { authValid, clearAuthToken, fetchWhoami } from '../api'
+import { clearAuthToken, fetchWhoami, logout } from '../api'
+import { tokenStore } from '../api/http'
 
 export type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated'
 
@@ -12,7 +13,7 @@ type AuthContextValue = {
   status: AuthStatus
   user: UserProfile | null
   setAuthenticated: () => Promise<void>
-  signOut: () => void
+  signOut: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -22,23 +23,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null)
 
   const refreshUser = useCallback(async () => {
-    try {
-      const profile = await fetchWhoami()
-      setUser(profile)
-    } catch {
-      setUser(null)
-    }
+    const profile = await fetchWhoami()
+    setUser(profile)
+    return profile
   }, [])
 
   useEffect(() => {
     let cancelled = false
 
     const check = async () => {
+      if (!tokenStore.get()) {
+        if (!cancelled) {
+          setStatus('unauthenticated')
+          setUser(null)
+        }
+        return
+      }
+
       try {
-        await authValid()
+        await refreshUser()
         if (!cancelled) {
           setStatus('authenticated')
-          await refreshUser()
         }
       } catch {
         if (!cancelled) {
@@ -63,10 +68,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setStatus('authenticated')
         await refreshUser()
       },
-      signOut: () => {
-        clearAuthToken()
-        setStatus('unauthenticated')
-        setUser(null)
+      signOut: async () => {
+        try {
+          await logout()
+        } finally {
+          clearAuthToken()
+          setStatus('unauthenticated')
+          setUser(null)
+        }
       },
     }),
     [status, user, refreshUser],
