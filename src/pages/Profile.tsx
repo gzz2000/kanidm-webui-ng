@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import QRCode from 'qrcode'
 import {
   beginCredentialUpdate,
   cancelCredentialUpdate,
@@ -11,23 +10,16 @@ import {
   fetchRadiusSecret,
   fetchSelfProfile,
   regenerateRadiusSecret,
-  sendCredentialUpdate,
   updatePersonProfile,
   deleteRadiusSecret,
 } from '../api'
 import type { components } from '../api/schema'
-import { performPasskeyCreation } from '../auth/webauthn'
 import { useAuth } from '../auth/AuthContext'
 import { useAccess } from '../auth/AccessContext'
 import CredentialSections from '../components/CredentialSections'
-import { buildTotpPayload } from '../utils/totp'
 
 type CUStatus = components['schemas']['CUStatus']
 type CUSessionToken = components['schemas']['CUSessionToken']
-type CURegState = components['schemas']['CURegState']
-type CURegWarning = components['schemas']['CURegWarning']
-type TotpSecret = components['schemas']['TotpSecret']
-type CredentialDetail = components['schemas']['CredentialDetail']
 type CredentialStatus = components['schemas']['CredentialStatus']
 
 type ProfileForm = {
@@ -44,57 +36,6 @@ function normalizeEmails(emails: string[]) {
 function emailsEqual(left: string[], right: string[]) {
   if (left.length !== right.length) return false
   return left.every((email, index) => email === right[index])
-}
-
-function extractPasskeyChallenge(state: CURegState): Record<string, unknown> | null {
-  if (state && typeof state === 'object' && 'Passkey' in state) {
-    return state.Passkey as Record<string, unknown>
-  }
-  return null
-}
-
-function extractTotpSecret(state: CURegState): TotpSecret | null {
-  if (state && typeof state === 'object' && 'TotpCheck' in state) {
-    return state.TotpCheck as TotpSecret
-  }
-  return null
-}
-
-function describeWarning(warning: CURegWarning, t: (key: string) => string) {
-  if (typeof warning === 'string') {
-    switch (warning) {
-      case 'MfaRequired':
-        return t('warnings.mfaRequired')
-      case 'PasskeyRequired':
-        return t('warnings.passkeyRequired')
-      case 'AttestedPasskeyRequired':
-        return t('warnings.attestedPasskeyRequired')
-      case 'AttestedResidentKeyRequired':
-        return t('warnings.attestedResidentKeyRequired')
-      case 'WebauthnAttestationUnsatisfiable':
-        return t('warnings.webauthnAttestationUnsatisfiable')
-      case 'WebauthnUserVerificationRequired':
-        return t('warnings.webauthnUserVerificationRequired')
-      case 'Unsatisfiable':
-        return t('warnings.unsatisfiable')
-      case 'NoValidCredentials':
-        return t('warnings.noValidCredentials')
-      default:
-        return warning
-    }
-  }
-  return String(warning)
-}
-
-function hasPasswordCredential(cred: CredentialDetail | null | undefined) {
-  if (!cred) return false
-  if (cred.type_ === 'Password' || cred.type_ === 'GeneratedPassword') {
-    return true
-  }
-  if (typeof cred.type_ === 'object' && cred.type_ && 'PasswordMfa' in cred.type_) {
-    return true
-  }
-  return false
 }
 
 function summarizePasskeys(labels: string[] | null | undefined, t: (key: string, args?: Record<string, unknown>) => string) {
@@ -155,22 +96,6 @@ export default function Profile() {
   const [credSummaryMessage, setCredSummaryMessage] = useState<string | null>(null)
   const loadRef = useRef(false)
   const [passkeyLabels, setPasskeyLabels] = useState<string[]>([])
-  const [password, setPassword] = useState('')
-  const [passwordConfirm, setPasswordConfirm] = useState('')
-  const [showPasswordForm, setShowPasswordForm] = useState(false)
-  const [passkeyLabel, setPasskeyLabel] = useState('')
-  const [passkeyLabelOpen, setPasskeyLabelOpen] = useState(false)
-  const [pendingPasskey, setPendingPasskey] = useState<Record<string, unknown> | null>(null)
-  const [totpPayload, setTotpPayload] = useState<ReturnType<typeof buildTotpPayload> | null>(
-    null,
-  )
-  const [totpQr, setTotpQr] = useState<string | null>(null)
-  const [totpLabel, setTotpLabel] = useState('')
-  const [totpCode, setTotpCode] = useState('')
-  const [totpError, setTotpError] = useState<string | null>(null)
-  const [totpModalOpen, setTotpModalOpen] = useState(false)
-  const [totpSha1Warning, setTotpSha1Warning] = useState(false)
-  const [passwordNotice, setPasswordNotice] = useState<string | null>(null)
 
   const { canEdit, permissions, requestReauth } = useAccess()
 
@@ -178,40 +103,6 @@ export default function Profile() {
   const canEditEmail = canEdit && permissions.emailAllowed
   const canEditSelfWrite = canEdit && permissions.selfWriteAllowed
   const hasAnyEditPermission = permissions.nameAllowed || permissions.emailAllowed
-  const credentialWarnings = useMemo(
-    () => (credStatus ? credStatus.warnings.map((warning) => describeWarning(warning, t)) : []),
-    [credStatus, t],
-  )
-  const passwordConfigured = useMemo(
-    () => hasPasswordCredential(credStatus?.primary),
-    [credStatus],
-  )
-  const passwordResetAvailable = passwordConfigured || Boolean(passwordNotice)
-  const passwordButtonLabel = passwordResetAvailable
-    ? t('profile.passwordReset')
-    : t('profile.passwordSet')
-  const passwordHelper = t('profile.passwordHelper')
-  const effectivePasswordNotice =
-    passwordNotice ?? (passwordConfigured ? t('profile.passwordSetNotice') : null)
-
-  useEffect(() => {
-    const buildQr = async () => {
-      if (!totpPayload?.uri) {
-        setTotpQr(null)
-        return
-      }
-      try {
-        const dataUrl = await QRCode.toDataURL(totpPayload.uri, {
-          width: 280,
-          margin: 1,
-        })
-        setTotpQr(dataUrl)
-      } catch {
-        setTotpQr(null)
-      }
-    }
-    void buildQr()
-  }, [totpPayload?.uri])
 
   useEffect(() => {
     if (loadRef.current) return
@@ -363,8 +254,6 @@ export default function Profile() {
       requestReauth()
       return
     }
-    setPasswordNotice(null)
-    setShowPasswordForm(false)
     setCredLoading(true)
     setCredMessage(null)
     try {
@@ -380,201 +269,6 @@ export default function Profile() {
     }
   }
 
-  const submitPasswordChange = async (event: React.FormEvent) => {
-    event.preventDefault()
-    if (!credSession) {
-      setCredMessage(t('profile.messageCredentialSessionRequired'))
-      return
-    }
-    if (!password || password !== passwordConfirm) {
-      setCredMessage(t('profile.messagePasswordMismatch'))
-      return
-    }
-
-    setCredLoading(true)
-    setCredMessage(null)
-    try {
-      const status = await sendCredentialUpdate(credSession, {
-        password,
-      })
-      setCredStatus(status)
-      setPassword('')
-      setPasswordConfirm('')
-      setShowPasswordForm(false)
-      setPasswordNotice(t('profile.messagePasswordSetNotice'))
-      setCredMessage(t('profile.messagePasswordStaged'))
-      if (status.warnings.includes('MfaRequired')) {
-        await beginTotpEnrollment()
-      }
-    } catch (error) {
-      setCredMessage(error instanceof Error ? error.message : t('profile.messagePasswordUpdateFailed'))
-    } finally {
-      setCredLoading(false)
-    }
-  }
-
-  const beginPasskeyEnrollment = async () => {
-    if (!credSession) {
-      setCredMessage(t('profile.messagePasskeySessionRequired'))
-      return
-    }
-
-    setCredLoading(true)
-    setCredMessage(null)
-    try {
-      const initStatus = await sendCredentialUpdate(credSession, 'passkeyinit')
-      const challenge = extractPasskeyChallenge(initStatus.mfaregstate)
-      if (!challenge) {
-        throw new Error(t('profile.messagePasskeyChallengeMissing'))
-      }
-      const registration = await performPasskeyCreation(challenge)
-      setPendingPasskey(registration)
-      setPasskeyLabel('')
-      setPasskeyLabelOpen(true)
-    } catch (error) {
-      setCredMessage(error instanceof Error ? error.message : t('profile.messagePasskeyEnrollFailed'))
-    } finally {
-      setCredLoading(false)
-    }
-  }
-
-  const submitPasskeyLabel = async () => {
-    if (!credSession || !pendingPasskey) return
-    if (!passkeyLabel.trim()) {
-      setCredMessage(t('profile.messagePasskeyLabelRequired'))
-      return
-    }
-    setCredLoading(true)
-    setCredMessage(null)
-    try {
-      const status = await sendCredentialUpdate(credSession, {
-        passkeyfinish: [passkeyLabel.trim(), pendingPasskey],
-      })
-      setCredStatus(status)
-      setPasskeyLabel('')
-      setPendingPasskey(null)
-      setPasskeyLabelOpen(false)
-      setCredMessage(t('profile.messagePasskeyEnrolled'))
-    } catch (error) {
-      setCredMessage(error instanceof Error ? error.message : t('profile.messagePasskeyEnrollFailed'))
-    } finally {
-      setCredLoading(false)
-    }
-  }
-
-  const beginTotpEnrollment = async () => {
-    if (!credSession) return
-    setTotpError(null)
-    setTotpSha1Warning(false)
-    setTotpLabel('')
-    setTotpCode('')
-    setTotpModalOpen(true)
-    if (!totpPayload) {
-      setTotpError(t('profile.messageTotpLoading'))
-    }
-    setCredLoading(true)
-    try {
-      const status = await sendCredentialUpdate(credSession, 'totpgenerate')
-      const secret = extractTotpSecret(status.mfaregstate)
-      if (!secret) {
-        throw new Error(t('profile.messageTotpSetupMissing'))
-      }
-      setTotpPayload(buildTotpPayload(secret))
-      setTotpError(null)
-      setCredStatus(status)
-    } catch (error) {
-      setTotpError(error instanceof Error ? error.message : t('profile.messageTotpStartFailed'))
-    } finally {
-      setCredLoading(false)
-    }
-  }
-
-  const submitTotpEnrollment = async (acceptSha1 = false) => {
-    if (!credSession || !totpPayload) return
-    if (!acceptSha1) {
-      if (!totpLabel.trim() || !totpCode.trim()) {
-        setTotpError(t('profile.messageTotpNameCodeRequired'))
-        return
-      }
-    }
-    setCredLoading(true)
-    setTotpError(null)
-    try {
-      const status = acceptSha1
-        ? await sendCredentialUpdate(credSession, 'totpacceptsha1')
-        : await sendCredentialUpdate(credSession, {
-            totpverify: [Number(totpCode), totpLabel.trim()],
-          })
-      if (status.mfaregstate === 'TotpInvalidSha1') {
-        setTotpSha1Warning(true)
-        setTotpError(t('profile.messageTotpSha1'))
-      } else if (status.mfaregstate === 'TotpTryAgain') {
-        setTotpError(t('profile.messageTotpTryAgain'))
-      } else if (
-        status.mfaregstate &&
-        typeof status.mfaregstate === 'object' &&
-        'TotpNameTryAgain' in status.mfaregstate
-      ) {
-        setTotpError(
-          t('profile.messageTotpNameInvalid', {
-            name: status.mfaregstate.TotpNameTryAgain,
-          }),
-        )
-      } else {
-        setTotpModalOpen(false)
-        setTotpPayload(null)
-        setTotpQr(null)
-        setTotpLabel('')
-        setTotpCode('')
-        setTotpSha1Warning(false)
-      }
-      setCredStatus(status)
-    } catch (error) {
-      setTotpError(error instanceof Error ? error.message : t('profile.messageTotpAddFailed'))
-    } finally {
-      setCredLoading(false)
-    }
-  }
-
-  const cancelTotpEnrollment = async () => {
-    if (!credSession) return
-    setCredLoading(true)
-    setTotpError(null)
-    try {
-      const status = await sendCredentialUpdate(credSession, 'cancelmfareg')
-      setCredStatus(status)
-      setTotpModalOpen(false)
-      setTotpPayload(null)
-      setTotpQr(null)
-      setTotpLabel('')
-      setTotpCode('')
-      setTotpSha1Warning(false)
-    } catch (error) {
-      setTotpError(
-        error instanceof Error ? error.message : t('profile.messageTotpCancelFailed'),
-      )
-    } finally {
-      setCredLoading(false)
-    }
-  }
-
-
-  const removePasskey = async (uuid: string) => {
-    if (!credSession) return
-    setCredLoading(true)
-    setCredMessage(null)
-    try {
-      const status = await sendCredentialUpdate(credSession, {
-        passkeyremove: uuid,
-      })
-      setCredStatus(status)
-    } catch (error) {
-      setCredMessage(error instanceof Error ? error.message : t('profile.messagePasskeyRemoveFailed'))
-    } finally {
-      setCredLoading(false)
-    }
-  }
-
   const commitCredentialChanges = async () => {
     if (!credSession) return
     setCredLoading(true)
@@ -583,8 +277,6 @@ export default function Profile() {
       await commitCredentialUpdate(credSession)
       setCredSession(null)
       setCredStatus(null)
-      setShowPasswordForm(false)
-      setPasswordNotice(null)
       if (profileId) {
         try {
           const summary = await fetchCredentialStatus(profileId)
@@ -621,8 +313,6 @@ export default function Profile() {
       await cancelCredentialUpdate(credSession)
       setCredSession(null)
       setCredStatus(null)
-      setShowPasswordForm(false)
-      setPasswordNotice(null)
       if (profileId) {
         const summary = await fetchCredentialStatus(profileId)
         setCredSummary(summary)
@@ -846,77 +536,18 @@ export default function Profile() {
 
           {credSession && credStatus && (
             <div className="credential-panel">
-              <div className="credential-alert">
-                <span>{t('profile.editingAlert')}</span>
-                {credentialWarnings.length > 0 && (
-                  <div>
-                    <span className="warning-text">{t('profile.warningsTitle')}</span>
-                    <ul className="warning-list">
-                      {credentialWarnings.map((warning) => (
-                        <li key={warning}>{warning}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {credStatus.passkeys.length === 0 && (
-                  <span className="muted-text">{t('profile.tipPasskey')}</span>
-                )}
-                {!credStatus.can_commit && (
-                  <span className="warning-text">{t('profile.cannotSave')}</span>
-                )}
-              </div>
-
               <CredentialSections
+                session={credSession!}
                 status={credStatus}
                 loading={credLoading}
-                showPasswordForm={showPasswordForm}
-                password={password}
-                passwordConfirm={passwordConfirm}
-                passwordButtonLabel={
-                  showPasswordForm ? t('profile.hideForm') : passwordButtonLabel
-                }
-                passwordHelper={passwordHelper}
-                passwordNotice={effectivePasswordNotice}
-                passkeyLabelOpen={passkeyLabelOpen}
-                passkeyLabel={passkeyLabel}
-                totpModalOpen={totpModalOpen}
-                totpPayload={totpPayload}
-                totpQr={totpQr}
-                totpError={totpError}
-                totpLabel={totpLabel}
-                totpCode={totpCode}
-                totpSha1Warning={totpSha1Warning}
-                onBeginPasskeyEnrollment={beginPasskeyEnrollment}
-                onRemovePasskey={removePasskey}
-                onTogglePasswordForm={() => setShowPasswordForm((prev) => !prev)}
-                onPasswordChange={setPassword}
-                onPasswordConfirmChange={setPasswordConfirm}
-                onPasswordSubmit={submitPasswordChange}
-                onBeginTotpEnrollment={beginTotpEnrollment}
-                onPasskeyLabelChange={setPasskeyLabel}
-                onPasskeyLabelCancel={() => {
-                  setPasskeyLabelOpen(false)
-                  setPendingPasskey(null)
-                  setPasskeyLabel('')
-                }}
-                onPasskeyLabelSave={() => {
-                  void submitPasskeyLabel()
-                }}
-                onTotpLabelChange={setTotpLabel}
-                onTotpCodeChange={setTotpCode}
-                onTotpCopyUri={async () => {
-                  if (!totpPayload) return
-                  await navigator.clipboard?.writeText(totpPayload.uri)
-                }}
-                onTotpCancel={() => {
-                  void cancelTotpEnrollment()
-                }}
-                onTotpAcceptSha1={() => {
-                  void submitTotpEnrollment(true)
-                }}
-                onTotpSubmit={() => {
-                  void submitTotpEnrollment()
-                }}
+                onLoadingChange={setCredLoading}
+                onStatusChange={setCredStatus}
+                onMessage={setCredMessage}
+                context="profile"
+                leadMessage={t('profile.editingAlert')}
+                warningsTitle={t('profile.warningsTitle')}
+                tipMessage={t('profile.tipPasskey')}
+                cannotSaveMessage={t('profile.cannotSave')}
               />
 
               <div className="credential-actions">

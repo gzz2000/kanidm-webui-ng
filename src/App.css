@@ -671,6 +671,13 @@
   gap: 10px;
 }
 
+.inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .radius-panel {
   display: grid;
   gap: 12px;
@@ -699,6 +706,7 @@
   place-items: center;
   padding: 20px;
   overflow-y: auto;
+  z-index: 1000;
 }
 
 .modal {
@@ -711,6 +719,8 @@
   gap: 12px;
   max-height: 90vh;
   overflow-y: auto;
+  position: relative;
+  z-index: 1001;
 }
 
 .totp-modal {
