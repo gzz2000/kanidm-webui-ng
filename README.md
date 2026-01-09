@@ -4,11 +4,19 @@ This project aims to implement a fully-featured web UI for the [kanidm](https://
 
 ![screenshot-login](./README.assets/screenshot-login.png)
 
-![screnshot-myprofile](README.assets/screenshot-myprofile.png)
+![screenshot-myprofile](README.assets/screenshot-myprofile.png)
+
+![screenshot-myprofile-p2](README.assets/screenshot-myprofile-p2.png)
 
 ![screenshot-reauth](README.assets/screenshot-reauth.png)
 
-![image-20260109142732650](README.assets/screenshot-sshkey.png)
+![screenshot-group](README.assets/screenshot-group.png)
+
+![screenshot-groupdetails](README.assets/screenshot-groupdetails.png)
+
+![screenshot-peopleonboard](README.assets/screenshot-peopleonboard.png)
+
+![screenshot-serviceaccount](README.assets/screenshot-serviceaccount.png)
 
 ## Roadmap
 
@@ -17,9 +25,10 @@ This project aims to implement a fully-featured web UI for the [kanidm](https://
 - [x] Profile edits, password resets, RADIUS
 - [x] SSH key self service
 - [x] People management (create, modify, get reset token, POSIX management)
-- [ ] Group management
+- [x] Group management
+- [x] Service accounts management
+- [x] Friendly user on boarding
 - [ ] OAuth2 clients
-- [ ] Service accounts
 - [ ] System (domain, db, etc.) management and customization
 
 
