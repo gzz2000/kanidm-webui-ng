@@ -874,8 +874,25 @@
   gap: 8px;
 }
 
-.ssh-add-card {
-  align-self: start;
+.ssh-add-toggle {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--panel);
+}
+
+.ssh-add-toggle summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+}
+
+.ssh-add-toggle summary::-webkit-details-marker {
+  display: none;
+}
+
+.ssh-add-toggle[open] summary {
+  margin-bottom: 10px;
 }
 
 .ssh-list {

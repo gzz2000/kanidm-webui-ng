@@ -14,7 +14,6 @@ function AppShellContent() {
   const navItems = [
     { to: '/', label: 'Apps' },
     { to: '/profile', label: t('shell.navProfile') },
-    { to: '/ssh-keys', label: t('shell.navSshKeys') },
     { to: '/people', label: t('shell.navPeople') },
     { to: '/service-accounts', label: t('shell.navServiceAccounts') },
     { to: '/groups', label: 'Groups' },

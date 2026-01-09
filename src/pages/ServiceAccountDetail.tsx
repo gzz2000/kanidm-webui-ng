@@ -292,7 +292,7 @@ export default function ServiceAccountDetail() {
       const keys = await fetchServiceAccountSshKeys(accountId)
       setSshKeys(keys)
     } catch (error) {
-      setSshMessage(error instanceof Error ? error.message : t('serviceAccounts.messages.sshLoadFailed'))
+      setSshMessage(error instanceof Error ? error.message : t('profile.ssh.messageLoadFailed'))
     }
   }
 
@@ -581,7 +581,7 @@ export default function ServiceAccountDetail() {
     event.preventDefault()
     if (!accountMeta) return
     if (!canManageSshKeys) {
-      setSshMessage(t('serviceAccounts.messages.sshPermission'))
+      setSshMessage(t('profile.ssh.permissionDenied'))
       return
     }
     if (!canEdit) {
@@ -590,8 +590,12 @@ export default function ServiceAccountDetail() {
     }
     const label = sshLabel.trim()
     const keyValue = sshKey.trim()
-    if (!label || !keyValue) {
-      setSshMessage(t('serviceAccounts.messages.sshRequired'))
+    if (!label) {
+      setSshMessage(t('profile.ssh.messageLabelRequired'))
+      return
+    }
+    if (!keyValue) {
+      setSshMessage(t('profile.ssh.messageKeyRequired'))
       return
     }
     setSshLoading(true)
@@ -602,7 +606,7 @@ export default function ServiceAccountDetail() {
       setSshKey('')
       await loadSshKeys(accountMeta.uuid)
     } catch (error) {
-      setSshMessage(error instanceof Error ? error.message : t('serviceAccounts.messages.sshAddFailed'))
+      setSshMessage(error instanceof Error ? error.message : t('profile.ssh.messageAddFailed'))
     } finally {
       setSshLoading(false)
     }
@@ -611,7 +615,7 @@ export default function ServiceAccountDetail() {
   const handleSshDelete = async (tag: string) => {
     if (!accountMeta) return
     if (!canManageSshKeys) {
-      setSshMessage(t('serviceAccounts.messages.sshPermission'))
+      setSshMessage(t('profile.ssh.permissionDenied'))
       return
     }
     if (!canEdit) {
@@ -624,7 +628,7 @@ export default function ServiceAccountDetail() {
       await deleteServiceAccountSshKey(accountMeta.uuid, tag)
       await loadSshKeys(accountMeta.uuid)
     } catch (error) {
-      setSshMessage(error instanceof Error ? error.message : t('serviceAccounts.messages.sshRemoveFailed'))
+      setSshMessage(error instanceof Error ? error.message : t('profile.ssh.messageDeleteFailed'))
     } finally {
       setSshDeleting(null)
       setSshConfirm(null)
@@ -1033,45 +1037,94 @@ export default function ServiceAccountDetail() {
 
         <section className="profile-card service-account-card">
           <header>
-            <h2>{t('serviceAccounts.detail.sshTitle')}</h2>
-            <p>{t('serviceAccounts.detail.sshDesc')}</p>
+            <h2>{t('profile.ssh.title')}</h2>
+            <p>{t('profile.ssh.subtitle')}</p>
           </header>
           {sshMessage && <p className="feedback">{sshMessage}</p>}
-          <form className="stacked-form" onSubmit={handleSshSubmit}>
-            <div className="field">
-              <label>{t('serviceAccounts.detail.sshLabel')}</label>
-              <input
-                value={sshLabel}
-                onChange={(event) => setSshLabel(event.target.value)}
-                disabled={!canManageSshKeys}
-                readOnly={canManageSshKeys && !canEdit}
-                onFocus={() => {
-                  if (!canEdit && canManageSshKeys) requestReauth()
-                }}
-              />
-            </div>
-            <div className="field">
-              <label>{t('serviceAccounts.detail.sshKey')}</label>
-              <textarea
-                value={sshKey}
-                onChange={(event) => setSshKey(event.target.value)}
-                disabled={!canManageSshKeys}
-                readOnly={canManageSshKeys && !canEdit}
-                onFocus={() => {
-                  if (!canEdit && canManageSshKeys) requestReauth()
-                }}
-              />
-            </div>
-            <div className="profile-actions">
-              <button className="primary-button" type="submit" disabled={!canManageSshKeys || sshLoading}>
-                {sshLoading ? t('serviceAccounts.detail.sshAdding') : t('serviceAccounts.detail.sshAdd')}
-              </button>
-            </div>
-          </form>
+          {sshKeys.length === 0 ? (
+            <form className="stacked-form" onSubmit={handleSshSubmit}>
+              <div className="field">
+                <label>{t('profile.ssh.labelLabel')}</label>
+                <input
+                  value={sshLabel}
+                  onChange={(event) => setSshLabel(event.target.value)}
+                  placeholder={t('profile.ssh.labelPlaceholder')}
+                  disabled={!canManageSshKeys}
+                  readOnly={canManageSshKeys && !canEdit}
+                  onFocus={() => {
+                    if (!canEdit && canManageSshKeys) requestReauth()
+                  }}
+                />
+              </div>
+              <div className="field">
+                <label>{t('profile.ssh.keyLabel')}</label>
+                <textarea
+                  value={sshKey}
+                  onChange={(event) => setSshKey(event.target.value)}
+                  placeholder={t('profile.ssh.keyPlaceholder')}
+                  disabled={!canManageSshKeys}
+                  readOnly={canManageSshKeys && !canEdit}
+                  onFocus={() => {
+                    if (!canEdit && canManageSshKeys) requestReauth()
+                  }}
+                />
+              </div>
+              <div className="profile-actions">
+                <button
+                  className="primary-button"
+                  type="submit"
+                  disabled={!canManageSshKeys || sshLoading}
+                >
+                  {sshLoading ? t('profile.ssh.adding') : t('profile.ssh.add')}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <details className="ssh-add-toggle">
+              <summary>{t('profile.ssh.addTitle')}</summary>
+              <form className="stacked-form" onSubmit={handleSshSubmit}>
+                <div className="field">
+                  <label>{t('profile.ssh.labelLabel')}</label>
+                  <input
+                    value={sshLabel}
+                    onChange={(event) => setSshLabel(event.target.value)}
+                    placeholder={t('profile.ssh.labelPlaceholder')}
+                    disabled={!canManageSshKeys}
+                    readOnly={canManageSshKeys && !canEdit}
+                    onFocus={() => {
+                      if (!canEdit && canManageSshKeys) requestReauth()
+                    }}
+                  />
+                </div>
+                <div className="field">
+                  <label>{t('profile.ssh.keyLabel')}</label>
+                  <textarea
+                    value={sshKey}
+                    onChange={(event) => setSshKey(event.target.value)}
+                    placeholder={t('profile.ssh.keyPlaceholder')}
+                    disabled={!canManageSshKeys}
+                    readOnly={canManageSshKeys && !canEdit}
+                    onFocus={() => {
+                      if (!canEdit && canManageSshKeys) requestReauth()
+                    }}
+                  />
+                </div>
+                <div className="profile-actions">
+                  <button
+                    className="primary-button"
+                    type="submit"
+                    disabled={!canManageSshKeys || sshLoading}
+                  >
+                    {sshLoading ? t('profile.ssh.adding') : t('profile.ssh.add')}
+                  </button>
+                </div>
+              </form>
+            </details>
+          )}
 
           <div className="ssh-list">
             {sshKeys.length === 0 ? (
-              <p className="muted-text">{t('serviceAccounts.detail.sshNone')}</p>
+              <p className="muted-text">{t('profile.ssh.empty')}</p>
             ) : (
               sshKeys.map((key) => (
                 <div className="ssh-key-card" key={key.tag}>
@@ -1082,14 +1135,16 @@ export default function ServiceAccountDetail() {
                     </div>
                     {sshConfirm === key.tag ? (
                       <div className="ssh-confirm">
-                        <span className="muted-text">{t('serviceAccounts.detail.sshConfirm', { label: key.tag })}</span>
+                        <span className="muted-text">
+                          {t('profile.ssh.removeConfirm', { label: key.tag })}
+                        </span>
                         <button
                           className="secondary-button"
                           type="button"
                           onClick={() => void handleSshDelete(key.tag)}
                           disabled={sshDeleting === key.tag}
                         >
-                          {t('serviceAccounts.detail.sshRemove')}
+                          {t('profile.ssh.remove')}
                         </button>
                         <button
                           className="ghost-button"
@@ -1097,7 +1152,7 @@ export default function ServiceAccountDetail() {
                           onClick={() => setSshConfirm(null)}
                           disabled={sshDeleting === key.tag}
                         >
-                          {t('serviceAccounts.detail.sshCancel')}
+                          {t('profile.ssh.cancel')}
                         </button>
                       </div>
                     ) : (
@@ -1107,7 +1162,7 @@ export default function ServiceAccountDetail() {
                         onClick={() => setSshConfirm(key.tag)}
                         disabled={!canManageSshKeys}
                       >
-                        {t('serviceAccounts.detail.sshRemove')}
+                        {t('profile.ssh.remove')}
                       </button>
                     )}
                   </div>

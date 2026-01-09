@@ -6,14 +6,18 @@ import {
   cancelCredentialUpdate,
   clearAuthToken,
   commitCredentialUpdate,
+  addSshPublicKey,
+  deleteSshPublicKey,
   fetchCredentialStatus,
   fetchRadiusSecret,
   fetchSelfProfile,
+  fetchSshPublicKeys,
   regenerateRadiusSecret,
   updatePersonProfile,
   deleteRadiusSecret,
 } from '../api'
 import type { components } from '../api/schema'
+import type { SshPublicKey } from '../api/ssh'
 import { useAuth } from '../auth/AuthContext'
 import { useAccess } from '../auth/AccessContext'
 import CredentialSections from '../components/CredentialSections'
@@ -28,6 +32,9 @@ type ProfileForm = {
   emails: string[]
 }
 
+function parseKeyType(value: string) {
+  return value.trim().split(/\s+/)[0] ?? ''
+}
 
 function normalizeEmails(emails: string[]) {
   return emails.map((email) => email.trim()).filter(Boolean)
@@ -104,6 +111,15 @@ export default function Profile() {
   const canEditSelfWrite = canEdit && permissions.selfWriteAllowed
   const hasAnyEditPermission = permissions.nameAllowed || permissions.emailAllowed
 
+  const [sshLoading, setSshLoading] = useState(true)
+  const [sshMessage, setSshMessage] = useState<string | null>(null)
+  const [sshKeys, setSshKeys] = useState<SshPublicKey[]>([])
+  const [sshLabel, setSshLabel] = useState('')
+  const [sshPublicKey, setSshPublicKey] = useState('')
+  const [sshSubmitting, setSshSubmitting] = useState(false)
+  const [sshDeletingLabel, setSshDeletingLabel] = useState<string | null>(null)
+  const [sshConfirmLabel, setSshConfirmLabel] = useState<string | null>(null)
+
   useEffect(() => {
     if (loadRef.current) return
     loadRef.current = true
@@ -141,10 +157,23 @@ export default function Profile() {
             error instanceof Error ? error.message : t('profile.messageRadiusLoadFailed'),
           )
         }
+
+        try {
+          const keys = await fetchSshPublicKeys(nextProfile.uuid)
+          setSshKeys(keys)
+          setSshMessage(null)
+        } catch (error) {
+          setSshMessage(
+            error instanceof Error ? error.message : t('profile.ssh.messageLoadFailed'),
+          )
+        } finally {
+          setSshLoading(false)
+        }
       } catch (error) {
         setMessage(error instanceof Error ? error.message : t('profile.messageLoadProfileFailed'))
       } finally {
         setLoading(false)
+        setSshLoading(false)
       }
     }
 
@@ -189,6 +218,88 @@ export default function Profile() {
   const requestReauthIfNeeded = () => {
     if (!canEdit) {
       requestReauth()
+    }
+  }
+
+  const loadSshKeys = async (personId: string, showLoading: boolean) => {
+    if (showLoading) {
+      setSshLoading(true)
+    }
+    try {
+      const result = await fetchSshPublicKeys(personId)
+      setSshKeys(result)
+      return true
+    } catch (error) {
+      setSshMessage(error instanceof Error ? error.message : t('profile.ssh.messageLoadFailed'))
+      return false
+    } finally {
+      if (showLoading) {
+        setSshLoading(false)
+      }
+    }
+  }
+
+  const handleSshAdd = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!profileId) return
+    if (!permissions.selfWriteAllowed) {
+      setSshMessage(t('profile.ssh.permissionDenied'))
+      return
+    }
+    if (!canEdit) {
+      requestReauth()
+      return
+    }
+    const nextLabel = sshLabel.trim()
+    const nextKey = sshPublicKey.trim()
+    if (!nextLabel) {
+      setSshMessage(t('profile.ssh.messageLabelRequired'))
+      return
+    }
+    if (!nextKey) {
+      setSshMessage(t('profile.ssh.messageKeyRequired'))
+      return
+    }
+    setSshSubmitting(true)
+    setSshMessage(null)
+    try {
+      await addSshPublicKey(profileId, nextLabel, nextKey)
+      setSshLabel('')
+      setSshPublicKey('')
+      const refreshed = await loadSshKeys(profileId, false)
+      if (refreshed) {
+        setSshMessage(t('profile.ssh.messageAdded'))
+      }
+    } catch (error) {
+      setSshMessage(error instanceof Error ? error.message : t('profile.ssh.messageAddFailed'))
+    } finally {
+      setSshSubmitting(false)
+    }
+  }
+
+  const handleSshDelete = async (tag: string) => {
+    if (!profileId) return
+    if (!permissions.selfWriteAllowed) {
+      setSshMessage(t('profile.ssh.permissionDenied'))
+      return
+    }
+    if (!canEdit) {
+      requestReauth()
+      return
+    }
+    setSshDeletingLabel(tag)
+    setSshMessage(null)
+    try {
+      await deleteSshPublicKey(profileId, tag)
+      const refreshed = await loadSshKeys(profileId, false)
+      if (refreshed) {
+        setSshMessage(t('profile.ssh.messageRemoved'))
+      }
+    } catch (error) {
+      setSshMessage(error instanceof Error ? error.message : t('profile.ssh.messageDeleteFailed'))
+    } finally {
+      setSshDeletingLabel(null)
+      setSshConfirmLabel(null)
     }
   }
 
@@ -613,6 +724,173 @@ export default function Profile() {
                 {t('profile.radiusRemove')}
               </button>
             </div>
+          </div>
+        </section>
+
+        <section className="profile-card">
+          <header>
+            <h2>{t('profile.ssh.title')}</h2>
+            <p>{t('profile.ssh.subtitle')}</p>
+          </header>
+
+          {sshMessage && <p className="feedback">{sshMessage}</p>}
+          {!permissions.selfWriteAllowed && (
+            <p className="muted-text">{t('profile.ssh.permissionDenied')}</p>
+          )}
+
+          {sshKeys.length === 0 ? (
+            <div className="stacked-form">
+              <div>
+                <div className="section-header">
+                  <h3>{t('profile.ssh.addTitle')}</h3>
+                </div>
+                <p className="muted-text">{t('profile.ssh.addDesc')}</p>
+              </div>
+              <form className="ssh-form" onSubmit={handleSshAdd}>
+                <label className="field">
+                  <span>{t('profile.ssh.labelLabel')}</span>
+                  <input
+                    value={sshLabel}
+                    onChange={(event) => setSshLabel(event.target.value)}
+                    placeholder={t('profile.ssh.labelPlaceholder')}
+                    disabled={!permissions.selfWriteAllowed}
+                    readOnly={!canEdit && permissions.selfWriteAllowed}
+                    onFocus={requestReauthIfNeeded}
+                    onClick={requestReauthIfNeeded}
+                  />
+                </label>
+                <label className="field">
+                  <span>{t('profile.ssh.keyLabel')}</span>
+                  <textarea
+                    value={sshPublicKey}
+                    onChange={(event) => setSshPublicKey(event.target.value)}
+                    placeholder={t('profile.ssh.keyPlaceholder')}
+                    disabled={!permissions.selfWriteAllowed}
+                    readOnly={!canEdit && permissions.selfWriteAllowed}
+                    onFocus={requestReauthIfNeeded}
+                    onClick={requestReauthIfNeeded}
+                  />
+                </label>
+                <div className="form-actions">
+                  <button
+                    className="primary-button"
+                    type="submit"
+                    disabled={!permissions.selfWriteAllowed || sshSubmitting}
+                  >
+                    {sshSubmitting ? t('profile.ssh.adding') : t('profile.ssh.add')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : (
+            <details className="ssh-add-toggle">
+              <summary>{t('profile.ssh.addTitle')}</summary>
+              <div className="stacked-form">
+                <p className="muted-text">{t('profile.ssh.addDesc')}</p>
+                <form className="ssh-form" onSubmit={handleSshAdd}>
+                  <label className="field">
+                    <span>{t('profile.ssh.labelLabel')}</span>
+                    <input
+                      value={sshLabel}
+                      onChange={(event) => setSshLabel(event.target.value)}
+                      placeholder={t('profile.ssh.labelPlaceholder')}
+                      disabled={!permissions.selfWriteAllowed}
+                      readOnly={!canEdit && permissions.selfWriteAllowed}
+                      onFocus={requestReauthIfNeeded}
+                      onClick={requestReauthIfNeeded}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>{t('profile.ssh.keyLabel')}</span>
+                    <textarea
+                      value={sshPublicKey}
+                      onChange={(event) => setSshPublicKey(event.target.value)}
+                      placeholder={t('profile.ssh.keyPlaceholder')}
+                      disabled={!permissions.selfWriteAllowed}
+                      readOnly={!canEdit && permissions.selfWriteAllowed}
+                      onFocus={requestReauthIfNeeded}
+                      onClick={requestReauthIfNeeded}
+                    />
+                  </label>
+                  <div className="form-actions">
+                    <button
+                      className="primary-button"
+                      type="submit"
+                      disabled={!permissions.selfWriteAllowed || sshSubmitting}
+                    >
+                      {sshSubmitting ? t('profile.ssh.adding') : t('profile.ssh.add')}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </details>
+          )}
+
+          <div className="credential-section">
+            <div className="section-header">
+              <h3>{t('profile.ssh.listTitle')}</h3>
+            </div>
+            <p className="muted-text">{t('profile.ssh.listDesc')}</p>
+
+            {sshLoading ? (
+              <p className="muted-text">{t('profile.ssh.loading')}</p>
+            ) : sshKeys.length === 0 ? (
+              <p className="muted-text">{t('profile.ssh.empty')}</p>
+            ) : (
+              <div className="ssh-list">
+                {sshKeys.map((key) => (
+                  <div className="ssh-key-card" key={key.label}>
+                    <div className="ssh-key-header">
+                      <div>
+                        <strong>{key.label}</strong>
+                        <span className="ssh-key-type">{parseKeyType(key.value)}</span>
+                      </div>
+                      {sshConfirmLabel === key.label ? (
+                        <div className="ssh-confirm">
+                          <span className="muted-text">
+                            {t('profile.ssh.removeConfirm', { label: key.label })}
+                          </span>
+                          <button
+                            className="secondary-button"
+                            type="button"
+                            onClick={() => {
+                              void handleSshDelete(key.label)
+                            }}
+                            disabled={!permissions.selfWriteAllowed || sshDeletingLabel === key.label}
+                          >
+                            {t('profile.ssh.remove')}
+                          </button>
+                          <button
+                            className="ghost-button"
+                            type="button"
+                            onClick={() => setSshConfirmLabel(null)}
+                            disabled={sshDeletingLabel === key.label}
+                          >
+                            {t('profile.ssh.cancel')}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          className="secondary-button"
+                          type="button"
+                          onClick={() => {
+                            if (!canEdit && permissions.selfWriteAllowed) {
+                              requestReauth()
+                              return
+                            }
+                            setSshConfirmLabel(key.label)
+                          }}
+                          disabled={!permissions.selfWriteAllowed}
+                        >
+                          {t('profile.ssh.remove')}
+                        </button>
+                      )}
+                    </div>
+                    <div className="ssh-key-value">{key.value}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
       </div>
