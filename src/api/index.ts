@@ -1,6 +1,7 @@
 export * from './auth'
 export * from './credential'
 export * from './client'
+export * from './people'
 export * from './types'
 export * from './ssh'
 export * from './user'

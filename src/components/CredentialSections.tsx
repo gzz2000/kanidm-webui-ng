@@ -407,6 +407,7 @@ export default function CredentialSections({
             <p className="muted-text">{t('credentials.passkeyDesc')}</p>
           </div>
           <button
+            className="primary-button"
             type="button"
             onClick={() => {
               void beginPasskeyEnrollment()
@@ -519,7 +520,7 @@ export default function CredentialSections({
                 onChange={(event) => setPasswordConfirm(event.target.value)}
               />
             </label>
-            <button type="submit" disabled={loading}>
+            <button className="primary-button" type="submit" disabled={loading}>
               {t('credentials.stagePasswordUpdate')}
             </button>
             {showTotpPrompt && (
@@ -565,7 +566,12 @@ export default function CredentialSections({
               >
                 {t('credentials.passkeyCancel')}
               </button>
-              <button type="button" onClick={() => void submitPasskeyLabel()} disabled={loading}>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => void submitPasskeyLabel()}
+                disabled={loading}
+              >
                 {t('credentials.passkeySave')}
               </button>
             </div>
@@ -646,7 +652,7 @@ export default function CredentialSections({
                     {t('credentials.totpAcceptSha1')}
                   </button>
                 )}
-                <button type="submit" disabled={loading}>
+                <button className="primary-button" type="submit" disabled={loading}>
                   {t('credentials.totpAdd')}
                 </button>
               </div>

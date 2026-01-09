@@ -10,8 +10,6 @@ const navItems = [
   { to: '/groups', label: 'Groups' },
   { to: '/service-accounts', label: 'Service Accounts' },
   { to: '/oauth2', label: 'OAuth2 Clients' },
-  { to: '/delegated-admin', label: 'Delegated Admin' },
-  { to: '/posix', label: 'POSIX' },
   { to: '/ssh-keys', label: 'SSH Keys' },
   { to: '/apps', label: 'Apps' },
   { to: '/profile', label: 'My Profile' },

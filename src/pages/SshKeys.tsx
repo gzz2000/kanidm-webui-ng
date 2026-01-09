@@ -182,7 +182,7 @@ export default function SshKeys() {
               />
             </label>
             <div className="form-actions">
-              <button type="submit" disabled={!canManage || submitting}>
+              <button className="primary-button" type="submit" disabled={!canManage || submitting}>
                 {submitting ? t('ssh.adding') : t('ssh.add')}
               </button>
             </div>

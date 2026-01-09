@@ -310,7 +310,11 @@ export function AccessProvider({ children }: { children: React.ReactNode }) {
                           />
                         </label>
                       )}
-                      <button type="submit" disabled={reauthLoading}>
+                      <button
+                        className="primary-button"
+                        type="submit"
+                        disabled={reauthLoading}
+                      >
                         {t('profile.reauthConfirm')}
                       </button>
                     </form>

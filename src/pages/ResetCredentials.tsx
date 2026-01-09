@@ -156,7 +156,7 @@ export default function ResetCredentials() {
                 required
               />
             </label>
-            <button type="submit" disabled={loading}>
+            <button className="primary-button" type="submit" disabled={loading}>
               {t('reset.startSession')}
             </button>
           </form>
@@ -193,6 +193,7 @@ export default function ResetCredentials() {
                 {t('reset.discard')}
               </button>
               <button
+                className="primary-button"
                 type="button"
                 onClick={() => {
                   void commitChanges()

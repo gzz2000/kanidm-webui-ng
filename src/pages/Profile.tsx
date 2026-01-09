@@ -486,7 +486,7 @@ export default function Profile() {
               </div>
 
               <div className="profile-actions">
-                <button type="submit" disabled={!hasAnyEditPermission}>
+                <button className="primary-button" type="submit" disabled={!hasAnyEditPermission}>
                   {t('profile.saveChanges')}
                 </button>
               </div>
@@ -562,6 +562,7 @@ export default function Profile() {
                   {t('profile.discard')}
                 </button>
                 <button
+                  className="primary-button"
                   type="button"
                   onClick={() => {
                     void commitCredentialChanges()

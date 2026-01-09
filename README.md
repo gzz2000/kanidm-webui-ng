@@ -16,7 +16,7 @@ This project aims to implement a fully-featured web UI for the [kanidm](https://
 - [x] Dark/light theming and English/中文 i18n
 - [x] Profile edits, password resets, RADIUS
 - [x] SSH key self service
-- [ ] People management (incl. POSIX)
+- [x] People management (create, modify, get reset token, POSIX management)
 - [ ] Group management
 - [ ] OAuth2 clients
 - [ ] Service accounts
