@@ -345,10 +345,14 @@
 }
 
 .badge {
-  padding: 6px 10px;
+  padding: 3px 8px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
+}
+
+.badge-sharp {
+  border-radius: 6px;
 }
 
 .badge-ok {
@@ -471,6 +475,12 @@
   flex-direction: column;
   gap: 4px;
   align-items: flex-end;
+}
+
+.topbar-user-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .profile-email-row input:disabled {

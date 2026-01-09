@@ -20,10 +20,14 @@ const navItems = [
 
 function AppShellContent() {
   const { signOut, user } = useAuth()
-  const { unlockedMinutes } = useAccess()
+  const { unlockedMinutes, memberOf } = useAccess()
   const { t } = useTranslation()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+
+  const isHighPrivilege = memberOf.some(
+    (group) => group.split('@')[0]?.toLowerCase() === 'idm_high_privilege',
+  )
 
   useEffect(() => {
     setMenuOpen(false)
@@ -74,9 +78,16 @@ function AppShellContent() {
           </div>
           <div className="topbar-meta">
             <div className="topbar-user">
-              <span>
-                {user ? `${user.displayName} (${user.name})` : t('shell.sameOrigin')}
-              </span>
+              <div className="topbar-user-row">
+                <span>
+                  {user ? `${user.displayName} (${user.name})` : t('shell.sameOrigin')}
+                </span>
+                {isHighPrivilege && (
+                  <span className="badge badge-warn badge-sharp" title={t('shell.highPrivilegeTip')}>
+                    {t('shell.highPrivilege')}
+                  </span>
+                )}
+              </div>
               {unlockedMinutes && (
                 <span className="profile-unlock">
                   {t('profile.unlockedEdit', { minutes: unlockedMinutes })}

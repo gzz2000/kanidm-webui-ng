@@ -29,6 +29,8 @@ const resources = {
         sameOrigin: 'Same-origin API expected',
         openMenu: 'Open navigation menu',
         closeMenu: 'Close navigation menu',
+        highPrivilege: 'High privilege',
+        highPrivilegeTip: 'This account is in a high-privilege group.',
       },
       warnings: {
         mfaRequired:
@@ -313,6 +315,8 @@ const resources = {
         sameOrigin: '同源 API 模式',
         openMenu: '打开导航菜单',
         closeMenu: '关闭导航菜单',
+        highPrivilege: '高权限',
+        highPrivilegeTip: '此账户属于高权限组。',
       },
       warnings: {
         mfaRequired: '需要多因素认证。请添加 TOTP 或改用通行密钥后再保存。',
