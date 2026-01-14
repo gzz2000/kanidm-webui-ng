@@ -7,6 +7,7 @@ import { useAccess } from '../auth/AccessContext'
 import { useAuth } from '../auth/AuthContext'
 import {
   canManageGroupEntry,
+  isAccessControlAdmin,
   isGroupAdmin,
   isHighPrivilege,
 } from '../utils/groupAccess'
@@ -24,6 +25,7 @@ export default function Groups() {
   const pendingRef = useRef<Promise<GroupSummary[]> | null>(null)
 
   const canCreate = useMemo(() => isGroupAdmin(memberOf), [memberOf])
+  const isAccessAdmin = useMemo(() => isAccessControlAdmin(memberOf), [memberOf])
   const canManageGroup = useMemo(() => {
     return (group: GroupSummary) => canManageGroupEntry(group.entryManagedBy, user, memberOf)
   }, [memberOf, user])
@@ -94,14 +96,16 @@ export default function Groups() {
           placeholder={t('groups.searchPlaceholder')}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={hideUnmanaged}
-            onChange={(event) => setHideUnmanaged(event.target.checked)}
-          />
-          <span>{t('groups.hideUnmanaged')}</span>
-        </label>
+        {!isAccessAdmin && (
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={hideUnmanaged}
+              onChange={(event) => setHideUnmanaged(event.target.checked)}
+            />
+            <span>{t('groups.hideUnmanaged')}</span>
+          </label>
+        )}
       </div>
 
       {message && <p className="feedback">{message}</p>}

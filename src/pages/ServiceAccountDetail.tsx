@@ -82,6 +82,9 @@ export default function ServiceAccountDetail() {
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
+  const [identityMessage, setIdentityMessage] = useState<string | null>(null)
+  const [validityMessage, setValidityMessage] = useState<string | null>(null)
+  const [emailMessage, setEmailMessage] = useState<string | null>(null)
   const [form, setForm] = useState<ServiceAccountForm | null>(null)
   const [initialForm, setInitialForm] = useState<ServiceAccountForm | null>(null)
   const [accountMeta, setAccountMeta] = useState<ServiceAccountMeta | null>(null)
@@ -266,7 +269,7 @@ export default function ServiceAccountDetail() {
       requestReauth()
       return
     }
-    setMessage(null)
+    setIdentityMessage(null)
     try {
       const normalizedEmails = normalizeEmails(form.emails)
       const emailChanged = !emailsEqual(normalizedEmails, normalizeEmails(initialForm.emails))
@@ -276,7 +279,7 @@ export default function ServiceAccountDetail() {
       const nameChanged = form.name.trim() !== initialForm.name.trim()
 
       if (entryManagerChanged && !form.entryManagedBy) {
-        setMessage(t('serviceAccounts.messages.entryManagerRequired'))
+        setIdentityMessage(t('serviceAccounts.messages.entryManagerRequired'))
         return
       }
 
@@ -287,7 +290,7 @@ export default function ServiceAccountDetail() {
         !displayNameChanged &&
         !nameChanged
       ) {
-        setMessage(t('serviceAccounts.messages.identityNoChanges'))
+        setIdentityMessage(t('serviceAccounts.messages.identityNoChanges'))
         return
       }
 
@@ -306,9 +309,9 @@ export default function ServiceAccountDetail() {
       if (refreshed) {
         setFormState(refreshed)
       }
-      setMessage(t('serviceAccounts.messages.identityUpdated'))
+      setIdentityMessage(t('serviceAccounts.messages.identityUpdated'))
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('serviceAccounts.messages.identityFailed'))
+      setIdentityMessage(error instanceof Error ? error.message : t('serviceAccounts.messages.identityFailed'))
     }
   }
 
@@ -316,7 +319,7 @@ export default function ServiceAccountDetail() {
     event.preventDefault()
     if (!form || !accountMeta) return
     if (!canManageValidity) {
-      setMessage(t('serviceAccounts.messages.validityPermission'))
+      setValidityMessage(t('serviceAccounts.messages.validityPermission'))
       return
     }
     if (!canEdit) {
@@ -325,15 +328,15 @@ export default function ServiceAccountDetail() {
     }
     const validFrom = fromLocalDateTime(form.validFrom)
     if (validFrom === undefined) {
-      setMessage(t('serviceAccounts.messages.validityStartInvalid'))
+      setValidityMessage(t('serviceAccounts.messages.validityStartInvalid'))
       return
     }
     const expireAt = fromLocalDateTime(form.expiresAt)
     if (expireAt === undefined) {
-      setMessage(t('serviceAccounts.messages.validityEndInvalid'))
+      setValidityMessage(t('serviceAccounts.messages.validityEndInvalid'))
       return
     }
-    setMessage(null)
+    setValidityMessage(null)
     try {
       if (validFrom) {
         await setServiceAccountAttr(accountMeta.uuid, 'account_valid_from', [validFrom])
@@ -349,16 +352,16 @@ export default function ServiceAccountDetail() {
       if (refreshed) {
         setFormState(refreshed)
       }
-      setMessage(t('serviceAccounts.messages.validityUpdated'))
+      setValidityMessage(t('serviceAccounts.messages.validityUpdated'))
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('serviceAccounts.messages.validityFailed'))
+      setValidityMessage(error instanceof Error ? error.message : t('serviceAccounts.messages.validityFailed'))
     }
   }
 
   const handleEmailSave = async () => {
     if (!form || !initialForm || !accountMeta) return
     if (!canEditEmail) {
-      setMessage(t('serviceAccounts.messages.emailPermission'))
+      setEmailMessage(t('serviceAccounts.messages.emailPermission'))
       return
     }
     if (!canEdit) {
@@ -367,19 +370,19 @@ export default function ServiceAccountDetail() {
     }
     const normalizedEmails = normalizeEmails(form.emails)
     if (emailsEqual(normalizedEmails, normalizeEmails(initialForm.emails))) {
-      setMessage(t('serviceAccounts.messages.emailNoChanges'))
+      setEmailMessage(t('serviceAccounts.messages.emailNoChanges'))
       return
     }
-    setMessage(null)
+    setEmailMessage(null)
     try {
       await updateServiceAccount({ id: accountMeta.uuid, emails: normalizedEmails })
       const refreshed = await fetchServiceAccount(accountMeta.uuid)
       if (refreshed) {
         setFormState(refreshed)
       }
-      setMessage(t('serviceAccounts.messages.emailUpdated'))
+      setEmailMessage(t('serviceAccounts.messages.emailUpdated'))
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('serviceAccounts.messages.emailFailed'))
+      setEmailMessage(error instanceof Error ? error.message : t('serviceAccounts.messages.emailFailed'))
     }
   }
 
@@ -627,14 +630,13 @@ export default function ServiceAccountDetail() {
         </div>
       </div>
 
-      {message && <p className="feedback">{message}</p>}
-
       <div className="profile-grid">
         <section className="profile-card service-account-card">
           <header>
             <h2>{t('serviceAccounts.detail.identityTitle')}</h2>
             <p>{t('serviceAccounts.detail.identityDesc')}</p>
           </header>
+          {identityMessage && <p className="feedback">{identityMessage}</p>}
           <form className="stacked-form" onSubmit={handleIdentitySubmit}>
             <div className="field">
               <label>{t('serviceAccounts.detail.accountName')}</label>
@@ -816,6 +818,7 @@ export default function ServiceAccountDetail() {
             <h2>{t('serviceAccounts.detail.validityTitle')}</h2>
             <p>{t('serviceAccounts.detail.validityDesc')}</p>
           </header>
+          {validityMessage && <p className="feedback">{validityMessage}</p>}
           <form className="stacked-form" onSubmit={handleValiditySubmit}>
             <div className="field">
               <label>{t('serviceAccounts.detail.validFrom')}</label>
@@ -1099,6 +1102,7 @@ export default function ServiceAccountDetail() {
             <h2>{t('serviceAccounts.detail.emailTitle')}</h2>
             <p>{t('serviceAccounts.detail.emailDesc')}</p>
           </header>
+          {emailMessage && <p className="feedback">{emailMessage}</p>}
           {!canEditEmail && <p className="muted-text">{t('serviceAccounts.detail.emailPermission')}</p>}
           <div className="profile-emails">
             <div className="profile-emails-header">

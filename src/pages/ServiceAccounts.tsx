@@ -23,7 +23,8 @@ export default function ServiceAccounts() {
   const [accounts, setAccounts] = useState<ServiceAccountSummary[]>([])
   const pendingRef = useRef<Promise<ServiceAccountSummary[]> | null>(null)
 
-  const canCreate = useMemo(() => isServiceAccountAdmin(memberOf), [memberOf])
+  const isAdmin = useMemo(() => isServiceAccountAdmin(memberOf), [memberOf])
+  const canCreate = isAdmin
   const canManageAccount = useMemo(() => {
     return (account: ServiceAccountSummary) =>
       canManageServiceAccountEntry(account.entryManagedBy, user, memberOf)
@@ -95,14 +96,16 @@ export default function ServiceAccounts() {
           placeholder={t('serviceAccounts.searchPlaceholder')}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={hideUnmanaged}
-            onChange={(event) => setHideUnmanaged(event.target.checked)}
-          />
-          <span>{t('serviceAccounts.hideUnmanaged')}</span>
-        </label>
+        {!isAdmin && (
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={hideUnmanaged}
+              onChange={(event) => setHideUnmanaged(event.target.checked)}
+            />
+            <span>{t('serviceAccounts.hideUnmanaged')}</span>
+          </label>
+        )}
       </div>
 
       {message && <p className="feedback">{message}</p>}

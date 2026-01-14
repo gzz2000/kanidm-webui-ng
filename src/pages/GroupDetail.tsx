@@ -47,6 +47,8 @@ export default function GroupDetail() {
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
+  const [identityMessage, setIdentityMessage] = useState<string | null>(null)
+  const [mailMessage, setMailMessage] = useState<string | null>(null)
   const [form, setForm] = useState<GroupForm | null>(null)
   const [initialForm, setInitialForm] = useState<GroupForm | null>(null)
   const [groupMeta, setGroupMeta] = useState<GroupMeta | null>(null)
@@ -175,18 +177,18 @@ export default function GroupDetail() {
       requestReauth()
       return
     }
-    setMessage(null)
+    setIdentityMessage(null)
     const nameChanged = form.name.trim() !== initialForm.name
     const descriptionChanged = form.description.trim() !== initialForm.description
     const entryManagerChanged = form.entryManagedBy !== initialForm.entryManagedBy
 
     if ((nameChanged && !canEditName) || (descriptionChanged && !canEditDescription)) {
-      setMessage(t('groups.detail.identityPermission'))
+      setIdentityMessage(t('groups.detail.identityPermission'))
       return
     }
 
     if (!nameChanged && !descriptionChanged && !entryManagerChanged) {
-      setMessage(t('groups.messages.identityNoChanges'))
+      setIdentityMessage(t('groups.messages.identityNoChanges'))
       return
     }
 
@@ -210,16 +212,16 @@ export default function GroupDetail() {
           await clearGroupAttr(groupMeta.uuid, 'entry_managed_by')
         }
       } else if (entryManagerChanged && !canEditEntryManagedBy) {
-        setMessage(t('groups.detail.entryManagerLocked'))
+        setIdentityMessage(t('groups.detail.entryManagerLocked'))
         return
       }
       const refreshed = await fetchGroup(groupMeta.uuid)
       if (refreshed) {
         setFormState(refreshed)
       }
-      setMessage(t('groups.messages.identityUpdated'))
+      setIdentityMessage(t('groups.messages.identityUpdated'))
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('groups.messages.identityFailed'))
+      setIdentityMessage(error instanceof Error ? error.message : t('groups.messages.identityFailed'))
     }
   }
 
@@ -231,14 +233,14 @@ export default function GroupDetail() {
       return
     }
     if (!canEditMail) {
-      setMessage(t('groups.detail.mailPermission'))
+      setMailMessage(t('groups.detail.mailPermission'))
       return
     }
-    setMessage(null)
+    setMailMessage(null)
     const emails = normalizeEmails(form.emails)
     const initialEmails = normalizeEmails(initialForm.emails)
     if (emailsEqual(emails, initialEmails)) {
-      setMessage(t('groups.messages.mailNoChanges'))
+      setMailMessage(t('groups.messages.mailNoChanges'))
       return
     }
     try {
@@ -251,9 +253,9 @@ export default function GroupDetail() {
       if (refreshed) {
         setFormState(refreshed)
       }
-      setMessage(t('groups.messages.mailUpdated'))
+      setMailMessage(t('groups.messages.mailUpdated'))
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('groups.messages.mailFailed'))
+      setMailMessage(error instanceof Error ? error.message : t('groups.messages.mailFailed'))
     }
   }
 
@@ -398,14 +400,13 @@ export default function GroupDetail() {
         </div>
       </div>
 
-      {message && <p className="feedback">{message}</p>}
-
       <div className="profile-grid">
         <section className="profile-card">
           <header>
             <h2>{t('groups.detail.identityTitle')}</h2>
             <p>{t('groups.detail.identityDesc')}</p>
           </header>
+          {identityMessage && <p className="feedback">{identityMessage}</p>}
           {!canEditName && !canEditDescription && !canEditEntryManagedBy && (
             <p className="muted-text">{t('groups.detail.identityPermission')}</p>
           )}
@@ -560,6 +561,7 @@ export default function GroupDetail() {
             <h2>{t('groups.detail.mailTitle')}</h2>
             <p>{t('groups.detail.mailDesc')}</p>
           </header>
+          {mailMessage && <p className="feedback">{mailMessage}</p>}
           {!canEditMail && (
             <p className="muted-text">{t('groups.detail.mailPermission')}</p>
           )}

@@ -32,6 +32,10 @@ export function isServiceAccountAdmin(memberOf: string[]) {
   return hasAnyGroup(memberOf, ['idm_service_account_admins'])
 }
 
+export function isServiceDesk(memberOf: string[]) {
+  return hasAnyGroup(memberOf, ['idm_service_desk'])
+}
+
 export function isGroupAdmin(memberOf: string[]) {
   return hasAnyGroup(memberOf, ['idm_group_admins'])
 }

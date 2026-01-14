@@ -60,7 +60,7 @@ export default function Profile() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState<string | null>(null)
+  const [profileMessage, setProfileMessage] = useState<string | null>(null)
   const [profile, setProfile] = useState<ProfileForm | null>(null)
   const [profileId, setProfileId] = useState<string>('')
   const [initialName, setInitialName] = useState('')
@@ -102,7 +102,7 @@ export default function Profile() {
 
     const load = async () => {
       setLoading(true)
-      setMessage(null)
+      setProfileMessage(null)
       try {
         const nextProfile = user ? user : await fetchSelfProfile()
         setProfile({
@@ -146,7 +146,9 @@ export default function Profile() {
           setSshLoading(false)
         }
       } catch (error) {
-        setMessage(error instanceof Error ? error.message : t('profile.messageLoadProfileFailed'))
+        setProfileMessage(
+          error instanceof Error ? error.message : t('profile.messageLoadProfileFailed'),
+        )
       } finally {
         setLoading(false)
         setSshLoading(false)
@@ -296,7 +298,7 @@ export default function Profile() {
 
   const handleProfileSave = async (event: React.FormEvent) => {
     event.preventDefault()
-    setMessage(null)
+    setProfileMessage(null)
     if (!profile || !profileId) return
 
     if (!canEdit) {
@@ -307,7 +309,7 @@ export default function Profile() {
     const name = profile.name.trim()
     const displayName = profile.displayName.trim()
     if (!name || !displayName) {
-      setMessage(t('profile.messageNameDisplayRequired'))
+      setProfileMessage(t('profile.messageNameDisplayRequired'))
       return
     }
 
@@ -324,14 +326,14 @@ export default function Profile() {
         emails: permissions.emailAllowed && emailChanged ? emails : undefined,
       })
       await setAuthenticated()
-      setMessage(t('profile.messageProfileUpdated'))
+      setProfileMessage(t('profile.messageProfileUpdated'))
       setInitialEmails(emails)
       setInitialName(name)
       setInitialDisplayName(displayName)
     } catch (error) {
       const messageText =
         error instanceof Error ? error.message : t('profile.messageProfileUpdateFailed')
-      setMessage(messageText)
+      setProfileMessage(messageText)
     }
   }
 
@@ -476,14 +478,13 @@ export default function Profile() {
         </div>
       </div>
 
-      {message && <p className="feedback">{message}</p>}
-
       <div className="profile-grid">
         <section className="profile-card">
           <header>
             <h2>{t('profile.personalTitle')}</h2>
             <p>{t('profile.personalDesc')}</p>
           </header>
+          {profileMessage && <p className="feedback">{profileMessage}</p>}
           {profile && (
             <form onSubmit={handleProfileSave}>
               <label className="field">

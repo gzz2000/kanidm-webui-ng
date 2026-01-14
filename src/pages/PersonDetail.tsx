@@ -21,6 +21,7 @@ import { isNotFound } from '../utils/errors'
 import {
   hasAnyGroup,
   isHighPrivilege,
+  isServiceDesk,
   isUnixAdmin,
 } from '../utils/groupAccess'
 
@@ -71,6 +72,9 @@ export default function PersonDetail() {
   const { canEdit, memberOf, requestReauth } = useAccess()
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
+  const [identityMessage, setIdentityMessage] = useState<string | null>(null)
+  const [emailMessage, setEmailMessage] = useState<string | null>(null)
+  const [validityMessage, setValidityMessage] = useState<string | null>(null)
   const [form, setForm] = useState<PersonForm | null>(null)
   const [initialForm, setInitialForm] = useState<PersonForm | null>(null)
   const [personMeta, setPersonMeta] = useState<PersonMeta | null>(null)
@@ -113,6 +117,11 @@ export default function PersonDetail() {
     if (!personMeta) return false
     return isHighPrivilege(personMeta.memberOf)
   }, [personMeta])
+
+  const canManageValidity = useMemo(
+    () => isPeopleAdmin || (isServiceDesk(memberOf) && !personHighPrivilege),
+    [isPeopleAdmin, memberOf, personHighPrivilege],
+  )
 
   const allowResetToken = canResetToken && (isPeopleAdmin || !personHighPrivilege)
 
@@ -250,18 +259,18 @@ export default function PersonDetail() {
 
   const handleIdentitySave = async () => {
     if (!form || !initialForm || !id) return
-    if (!isPeopleAdmin) return
+    if (!canManageValidity) return
     if (!canEdit) {
       requestReauth()
       return
     }
-    setMessage(null)
+    setIdentityMessage(null)
 
     const name = form.name.trim()
     const displayName = form.displayName.trim()
     const legalName = form.legalName.trim()
     if (!name || !displayName) {
-      setMessage(t('people.messages.identityRequired'))
+      setIdentityMessage(t('people.messages.identityRequired'))
       return
     }
 
@@ -279,9 +288,9 @@ export default function PersonDetail() {
         displayName,
         legalName,
       })
-      setMessage(t('people.messages.identityUpdated'))
+      setIdentityMessage(t('people.messages.identityUpdated'))
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('people.messages.identityFailed'))
+      setIdentityMessage(error instanceof Error ? error.message : t('people.messages.identityFailed'))
     }
   }
 
@@ -292,11 +301,11 @@ export default function PersonDetail() {
       requestReauth()
       return
     }
-    setMessage(null)
+    setEmailMessage(null)
 
     const emails = normalizeEmails(form.emails)
     if (emailsEqual(emails, normalizeEmails(initialForm.emails))) {
-      setMessage(t('people.messages.emailUnchanged'))
+      setEmailMessage(t('people.messages.emailUnchanged'))
       return
     }
 
@@ -306,27 +315,27 @@ export default function PersonDetail() {
         emails,
       })
       setInitialForm({ ...initialForm, emails })
-      setMessage(t('people.messages.emailUpdated'))
+      setEmailMessage(t('people.messages.emailUpdated'))
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('people.messages.emailFailed'))
+      setEmailMessage(error instanceof Error ? error.message : t('people.messages.emailFailed'))
     }
   }
 
   const handleValiditySave = async () => {
     if (!form || !initialForm || !id) return
-    if (!isPeopleAdmin) return
+    if (!canManageValidity) return
     if (!canEdit) {
       requestReauth()
       return
     }
-    setMessage(null)
+    setValidityMessage(null)
 
     const validFrom = form.validFrom.trim()
     const expiresAt = form.expiresAt.trim()
     const validFromIso = fromLocalDateTime(validFrom)
     const expiresAtIso = fromLocalDateTime(expiresAt)
     if (validFromIso === undefined || expiresAtIso === undefined) {
-      setMessage(t('people.messages.validityInvalid'))
+      setValidityMessage(t('people.messages.validityInvalid'))
       return
     }
     const validFromChanged = validFrom !== initialForm.validFrom
@@ -348,10 +357,16 @@ export default function PersonDetail() {
         }
       }
       setInitialForm({ ...initialForm, validFrom, expiresAt })
-      setMessage(t('people.messages.validityUpdated'))
+      setValidityMessage(t('people.messages.validityUpdated'))
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('people.messages.validityFailed'))
+      setValidityMessage(error instanceof Error ? error.message : t('people.messages.validityFailed'))
     }
+  }
+
+  const handleExpireNow = () => {
+    const nowValue = toLocalDateTime(new Date().toISOString())
+    handleIdentityChange('expiresAt', nowValue)
+    setValidityMessage(t('people.detail.expireNowHint'))
   }
 
   const handleResetToken = async () => {
@@ -470,14 +485,13 @@ export default function PersonDetail() {
         </div>
       </div>
 
-      {message && <p className="feedback">{message}</p>}
-
       <div className="profile-grid person-grid">
         <div className="profile-card person-card">
           <header>
             <h2>{t('people.detail.identityTitle')}</h2>
             <p>{t('people.detail.identityDesc')}</p>
           </header>
+          {identityMessage && <p className="feedback">{identityMessage}</p>}
           <div className="field">
             <label>{t('people.labels.username')}</label>
             <input
@@ -530,6 +544,7 @@ export default function PersonDetail() {
             <h2>{t('people.detail.emailTitle')}</h2>
             <p>{t('people.detail.emailDesc')}</p>
           </header>
+          {emailMessage && <p className="feedback">{emailMessage}</p>}
           {canReadPii ? (
             <div className="profile-emails">
               <div className="profile-emails-header">
@@ -590,6 +605,7 @@ export default function PersonDetail() {
             <h2>{t('people.detail.validityTitle')}</h2>
             <p>{t('people.detail.validityDesc')}</p>
           </header>
+          {validityMessage && <p className="feedback">{validityMessage}</p>}
           <div className="field">
             <label>{t('people.labels.validFrom')}</label>
             <input
@@ -597,9 +613,9 @@ export default function PersonDetail() {
               value={form.validFrom}
               placeholder={t('people.detail.datePlaceholder')}
               onChange={(event) => handleIdentityChange('validFrom', event.target.value)}
-              disabled={!isPeopleAdmin}
-              readOnly={isPeopleAdmin && !canEdit}
-              onFocus={() => requestReauthIfNeeded(isPeopleAdmin)}
+              disabled={!canManageValidity}
+              readOnly={canManageValidity && !canEdit}
+              onFocus={() => requestReauthIfNeeded(canManageValidity)}
             />
           </div>
           <div className="field">
@@ -609,13 +625,20 @@ export default function PersonDetail() {
               value={form.expiresAt}
               placeholder={t('people.detail.datePlaceholder')}
               onChange={(event) => handleIdentityChange('expiresAt', event.target.value)}
-              disabled={!isPeopleAdmin}
-              readOnly={isPeopleAdmin && !canEdit}
-              onFocus={() => requestReauthIfNeeded(isPeopleAdmin)}
+              disabled={!canManageValidity}
+              readOnly={canManageValidity && !canEdit}
+              onFocus={() => requestReauthIfNeeded(canManageValidity)}
             />
           </div>
-          {isPeopleAdmin && (
+          {canManageValidity && (
             <div className="profile-actions">
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={handleExpireNow}
+              >
+                {t('people.detail.expireNow')}
+              </button>
               <button
                 className="primary-button"
                 type="button"
