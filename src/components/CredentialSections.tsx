@@ -22,7 +22,7 @@ type Props = {
   onLoadingChange: (loading: boolean) => void
   onStatusChange: (status: CUStatus) => void
   onMessage: (message: string | null) => void
-  context: 'profile' | 'reset'
+  context: 'profile' | 'centered-page'
   leadMessage?: string
   warningsTitle: string
   tipMessage: string
@@ -94,7 +94,7 @@ export default function CredentialSections({
   cannotSaveMessage,
 }: Props) {
   const { t } = useTranslation()
-  const messagePrefix = context === 'reset' ? 'reset' : 'profile'
+  const messagePrefix = context === 'centered-page' ? 'centered-page' : 'profile'
   const msg = (key: string, args?: Record<string, unknown>) =>
     t(`${messagePrefix}.${key}`, args)
   const [password, setPassword] = useState('')
@@ -609,7 +609,7 @@ export default function CredentialSections({
                 </div>
               </div>
             )}
-            {totpError && <p className="feedback">{totpError}</p>}
+            {totpError && <p className="inline-feedback">{totpError}</p>}
             <form
               className="stacked-form"
               onSubmit={(event) => {

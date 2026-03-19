@@ -70,8 +70,8 @@ export default function Oauth2ClientCreate() {
         </div>
       </div>
 
-      <div className="profile-grid">
-        <div className="profile-card">
+      <div className="card-grid">
+        <div className="panel-card">
           <header>
             <h2>{t('oauth2.create.identityTitle')}</h2>
             <p>{t('oauth2.create.identityDesc')}</p>
@@ -139,9 +139,9 @@ export default function Oauth2ClientCreate() {
               </div>
             </label>
 
-            {message && <p className="feedback">{message}</p>}
+            {message && <p className="inline-feedback">{message}</p>}
 
-            <div className="profile-actions">
+            <div className="panel-actions">
               <button
                 className="primary-button"
                 type="submit"

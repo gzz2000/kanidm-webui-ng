@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -119,6 +119,7 @@ export default function Oauth2ClientDetail() {
   const [imageVersion, setImageVersion] = useState(0)
   const [imageError, setImageError] = useState(false)
   const [imageSrc, setImageSrc] = useState<string | null>(null)
+  const imageFileInputRef = useRef<HTMLInputElement | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [scopeConfirmGroup, setScopeConfirmGroup] = useState<string | null>(null)
   const [supScopeConfirmGroup, setSupScopeConfirmGroup] = useState<string | null>(null)
@@ -681,7 +682,6 @@ export default function Oauth2ClientDetail() {
   const handleImageUpload = async (file: File) => {
     if (!client || !isAdmin) return
     if (requestReauthIfNeeded()) {
-      setImageMessage(t('oauth2.messages.reauthImageUpdate'))
       return
     }
     setImageMessage(null)
@@ -712,6 +712,14 @@ export default function Oauth2ClientDetail() {
     }
   }
 
+  const handleImagePickerOpen = () => {
+    if (!client || !isAdmin) return
+    if (requestReauthIfNeeded()) {
+      return
+    }
+    imageFileInputRef.current?.click()
+  }
+
   const handleDeleteClient = async () => {
     if (!client || !isAdmin) return
     if (requestReauthIfNeeded()) {
@@ -740,7 +748,7 @@ export default function Oauth2ClientDetail() {
     return (
       <section className="page oauth2-page">
         <h1>{t('oauth2.detail.title')}</h1>
-        <p className="feedback">{pageMessage ?? t('oauth2.detail.notFound')}</p>
+        <p className="inline-feedback">{pageMessage ?? t('oauth2.detail.notFound')}</p>
       </section>
     )
   }
@@ -770,10 +778,10 @@ export default function Oauth2ClientDetail() {
         </div>
       </div>
 
-      {pageMessage && <p className="feedback">{pageMessage}</p>}
+      {pageMessage && <p className="inline-feedback">{pageMessage}</p>}
 
-      <div className="profile-grid oauth2-grid">
-        <div className="profile-card">
+      <div className="card-grid oauth2-grid">
+        <div className="panel-card">
           <header>
             <h2>{t('oauth2.detail.identityTitle')}</h2>
             <p>{t('oauth2.detail.identityDesc')}</p>
@@ -806,9 +814,9 @@ export default function Oauth2ClientDetail() {
               placeholder={t('oauth2.detail.descriptionPlaceholder')}
             />
           </label>
-          {identityMessage && <p className="feedback">{identityMessage}</p>}
+          {identityMessage && <p className="inline-feedback">{identityMessage}</p>}
           {isAdmin && (
-            <div className="profile-actions">
+            <div className="panel-actions">
               <button
                 className="primary-button"
                 type="button"
@@ -820,7 +828,7 @@ export default function Oauth2ClientDetail() {
           )}
         </div>
 
-        <div className="profile-card">
+        <div className="panel-card">
           <header>
             <h2>{t('oauth2.detail.redirectTitle')}</h2>
             <p>{t('oauth2.detail.redirectDesc')}</p>
@@ -836,7 +844,7 @@ export default function Oauth2ClientDetail() {
             />
           </label>
           {isAdmin && (
-            <div className="profile-actions">
+            <div className="panel-actions">
               <button
                 className="secondary-button"
                 type="button"
@@ -911,7 +919,7 @@ export default function Oauth2ClientDetail() {
                     placeholder={t('oauth2.detail.addRedirectPlaceholder')}
                   />
                 </label>
-                <div className="profile-actions">
+                <div className="panel-actions">
                   <button
                     className="primary-button"
                     type="button"
@@ -923,10 +931,10 @@ export default function Oauth2ClientDetail() {
               </>
             )}
           </div>
-          {redirectMessage && <p className="feedback">{redirectMessage}</p>}
+          {redirectMessage && <p className="inline-feedback">{redirectMessage}</p>}
         </div>
 
-        <div className="profile-card">
+        <div className="panel-card">
           <header>
             <h2>{t('oauth2.detail.securityTitle')}</h2>
             <p>{t('oauth2.detail.securityDesc')}</p>
@@ -1026,9 +1034,9 @@ export default function Oauth2ClientDetail() {
               )}
             </>
           )}
-          {securityMessage && <p className="feedback">{securityMessage}</p>}
+          {securityMessage && <p className="inline-feedback">{securityMessage}</p>}
           {isAdmin && (
-            <div className="profile-actions">
+            <div className="panel-actions">
               <button
                 className="primary-button"
                 type="button"
@@ -1041,7 +1049,7 @@ export default function Oauth2ClientDetail() {
           )}
         </div>
 
-        <div className="profile-card">
+        <div className="panel-card">
           <header>
             <h2>{t('oauth2.detail.scopeTitle')}</h2>
             <p>{t('oauth2.detail.scopeDesc')}</p>
@@ -1136,7 +1144,7 @@ export default function Oauth2ClientDetail() {
                   placeholder={t('oauth2.detail.scopePlaceholder')}
                 />
               </label>
-              <div className="profile-actions">
+              <div className="panel-actions">
                 <button
                   className="primary-button"
                   type="button"
@@ -1147,10 +1155,10 @@ export default function Oauth2ClientDetail() {
               </div>
             </>
           )}
-          {scopeMessage && <p className="feedback">{scopeMessage}</p>}
+          {scopeMessage && <p className="inline-feedback">{scopeMessage}</p>}
         </div>
 
-        <div className="profile-card">
+        <div className="panel-card">
           <header>
             <h2>{t('oauth2.detail.supScopeTitle')}</h2>
             <p>{t('oauth2.detail.supScopeDesc')}</p>
@@ -1242,7 +1250,7 @@ export default function Oauth2ClientDetail() {
                   placeholder={t('oauth2.detail.supScopePlaceholder')}
                 />
               </label>
-              <div className="profile-actions">
+              <div className="panel-actions">
                 <button
                   className="primary-button"
                   type="button"
@@ -1253,10 +1261,10 @@ export default function Oauth2ClientDetail() {
               </div>
             </>
           )}
-          {supScopeMessage && <p className="feedback">{supScopeMessage}</p>}
+          {supScopeMessage && <p className="inline-feedback">{supScopeMessage}</p>}
         </div>
 
-        <div className="profile-card">
+        <div className="panel-card">
           <header>
             <h2>{t('oauth2.detail.claimTitle')}</h2>
             <p>{t('oauth2.detail.claimDesc')}</p>
@@ -1389,7 +1397,7 @@ export default function Oauth2ClientDetail() {
                   <option value="ssv">{t('oauth2.join.ssv')}</option>
                 </select>
               </label>
-              <div className="profile-actions">
+              <div className="panel-actions">
                 <button
                   className="primary-button"
                   type="button"
@@ -1400,11 +1408,11 @@ export default function Oauth2ClientDetail() {
               </div>
             </>
           )}
-          {claimMessage && <p className="feedback">{claimMessage}</p>}
+          {claimMessage && <p className="inline-feedback">{claimMessage}</p>}
         </div>
 
         {client.type === 'basic' && (
-          <div className="profile-card">
+          <div className="panel-card">
             <header>
               <h2>{t('oauth2.detail.secretTitle')}</h2>
               <p>{t('oauth2.detail.secretDesc')}</p>
@@ -1414,9 +1422,9 @@ export default function Oauth2ClientDetail() {
                 <code>{secret}</code>
               </div>
             )}
-            {secretMessage && <p className="feedback">{secretMessage}</p>}
+            {secretMessage && <p className="inline-feedback">{secretMessage}</p>}
             {isAdmin && (
-              <div className="profile-actions">
+              <div className="panel-actions">
                 <button
                   className="secondary-button"
                   type="button"
@@ -1437,7 +1445,7 @@ export default function Oauth2ClientDetail() {
           </div>
         )}
 
-        <div className="profile-card">
+        <div className="panel-card">
           <header>
             <h2>{t('oauth2.detail.imageTitle')}</h2>
             <p>{t('oauth2.detail.imageDesc')}</p>
@@ -1452,7 +1460,7 @@ export default function Oauth2ClientDetail() {
             )}
             {imageError && <span className="muted-text">{t('oauth2.detail.imageEmpty')}</span>}
             {isAdmin && !imageError && imageSrc && (
-              <div className="profile-actions">
+              <div className="panel-actions">
                 <button
                   className="ghost-button"
                   type="button"
@@ -1463,12 +1471,21 @@ export default function Oauth2ClientDetail() {
               </div>
             )}
           </div>
-          {imageMessage && <p className="feedback">{imageMessage}</p>}
+          {imageMessage && <p className="inline-feedback">{imageMessage}</p>}
           {isAdmin && (
             <>
-              <label className="field">
+              <div className="field">
                 <span>{t('oauth2.detail.uploadImage')}</span>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={handleImagePickerOpen}
+                >
+                  {t('oauth2.actions.chooseImage')}
+                </button>
                 <input
+                  ref={imageFileInputRef}
+                  className="visually-hidden"
                   type="file"
                   accept="image/*"
                   onChange={(event) => {
@@ -1479,13 +1496,13 @@ export default function Oauth2ClientDetail() {
                     event.target.value = ''
                   }}
                 />
-              </label>
+              </div>
             </>
           )}
         </div>
 
         {isAdmin && (
-          <div className="profile-card danger-card">
+          <div className="panel-card danger-card">
             <header>
               <h2>{t('oauth2.detail.dangerTitle')}</h2>
               <p>{t('oauth2.detail.dangerDesc')}</p>

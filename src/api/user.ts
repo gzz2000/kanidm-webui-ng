@@ -11,6 +11,7 @@ type UserProfile = {
 }
 
 export type UserAuthToken = components['schemas']['UserAuthToken']
+type AppLink = components['schemas']['AppLink']
 
 export type SelfProfile = {
   uuid: string
@@ -20,6 +21,14 @@ export type SelfProfile = {
   passkeys: string[]
   attestedPasskeys: string[]
   memberOf: string[]
+}
+
+export type UserAppLink = {
+  kind: 'oauth2'
+  name: string
+  displayName: string
+  redirectUrl: string
+  hasImage: boolean
 }
 
 function firstAttr(entry: Entry, key: string) {
@@ -61,6 +70,23 @@ export async function fetchSelfProfile(): Promise<SelfProfile> {
 
 export async function fetchUserAuthToken(): Promise<UserAuthToken> {
   return apiRequest<UserAuthToken>('/v1/self/_uat', 'get')
+}
+
+export async function fetchSelfAppLinks(): Promise<UserAppLink[]> {
+  const response = await apiRequest<AppLink[]>('/v1/self/_applinks', 'get')
+  return response
+    .map((entry) => {
+      const oauth2 = entry.Oauth2
+      if (!oauth2) return null
+      return {
+        kind: 'oauth2' as const,
+        name: oauth2.name,
+        displayName: oauth2.display_name,
+        redirectUrl: oauth2.redirect_url,
+        hasImage: oauth2.has_image,
+      }
+    })
+    .filter((entry): entry is UserAppLink => entry !== null)
 }
 
 export async function updatePersonProfile(input: {

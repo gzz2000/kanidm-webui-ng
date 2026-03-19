@@ -478,13 +478,13 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="profile-grid">
-        <section className="profile-card">
+      <div className="card-grid">
+        <section className="panel-card">
           <header>
             <h2>{t('profile.personalTitle')}</h2>
             <p>{t('profile.personalDesc')}</p>
           </header>
-          {profileMessage && <p className="feedback">{profileMessage}</p>}
+          {profileMessage && <p className="inline-feedback">{profileMessage}</p>}
           {profile && (
             <form onSubmit={handleProfileSave}>
               <label className="field">
@@ -573,7 +573,7 @@ export default function Profile() {
                 )}
               </div>
 
-              <div className="profile-actions">
+              <div className="panel-actions">
                 <button className="primary-button" type="submit" disabled={!hasAnyEditPermission}>
                   {t('profile.saveChanges')}
                 </button>
@@ -582,7 +582,7 @@ export default function Profile() {
           )}
         </section>
 
-        <section className="profile-card">
+        <section className="panel-card">
           <header>
             <h2>{t('profile.credentialsTitle')}</h2>
             <p>{t('profile.credentialsDesc')}</p>
@@ -605,7 +605,7 @@ export default function Profile() {
             </div>
           )}
 
-          {credSummaryMessage && <p className="feedback">{credSummaryMessage}</p>}
+          {credSummaryMessage && <p className="inline-feedback">{credSummaryMessage}</p>}
 
           {!credSession && (
             <button
@@ -620,7 +620,7 @@ export default function Profile() {
             </button>
           )}
 
-          {credMessage && <p className="feedback">{credMessage}</p>}
+          {credMessage && <p className="inline-feedback">{credMessage}</p>}
 
           {credSession && credStatus && (
             <div className="credential-panel">
@@ -664,13 +664,13 @@ export default function Profile() {
           )}
         </section>
 
-        <section className="profile-card">
+        <section className="panel-card">
           <header>
             <h2>{t('profile.radiusTitle')}</h2>
             <p>{t('profile.radiusDesc')}</p>
           </header>
 
-          {radiusMessage && <p className="feedback">{radiusMessage}</p>}
+          {radiusMessage && <p className="inline-feedback">{radiusMessage}</p>}
 
           <div className="radius-panel">
             <div>
@@ -704,13 +704,13 @@ export default function Profile() {
           </div>
         </section>
 
-        <section className="profile-card">
+        <section className="panel-card">
           <header>
             <h2>{t('profile.ssh.title')}</h2>
             <p>{t('profile.ssh.subtitle')}</p>
           </header>
 
-          {sshMessage && <p className="feedback">{sshMessage}</p>}
+          {sshMessage && <p className="inline-feedback">{sshMessage}</p>}
           {!permissions.selfWriteAllowed && (
             <p className="muted-text">{t('profile.ssh.permissionDenied')}</p>
           )}

@@ -13,7 +13,7 @@ function AppShellContent() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const navItems = [
-    { to: '/', label: 'Apps' },
+    { to: '/', label: t('shell.navApps') },
     { to: '/profile', label: t('shell.navProfile') },
     { to: '/admin/people', label: t('shell.navPeople') },
     { to: '/admin/service-accounts', label: t('shell.navServiceAccounts') },

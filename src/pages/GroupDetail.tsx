@@ -400,13 +400,13 @@ export default function GroupDetail() {
         </div>
       </div>
 
-      <div className="profile-grid">
-        <section className="profile-card">
+      <div className="card-grid">
+        <section className="panel-card">
           <header>
             <h2>{t('groups.detail.identityTitle')}</h2>
             <p>{t('groups.detail.identityDesc')}</p>
           </header>
-          {identityMessage && <p className="feedback">{identityMessage}</p>}
+          {identityMessage && <p className="inline-feedback">{identityMessage}</p>}
           {!canEditName && !canEditDescription && !canEditEntryManagedBy && (
             <p className="muted-text">{t('groups.detail.identityPermission')}</p>
           )}
@@ -458,7 +458,7 @@ export default function GroupDetail() {
               )}
             </div>
             {(canEditName || canEditDescription || canEditEntryManagedBy) && (
-              <div className="profile-actions">
+              <div className="panel-actions">
                 <button
                   className="primary-button"
                   type="submit"
@@ -470,12 +470,12 @@ export default function GroupDetail() {
           </form>
         </section>
 
-        <section className="profile-card">
+        <section className="panel-card">
           <header>
             <h2>{t('groups.detail.membersTitle')}</h2>
             <p>{t('groups.detail.membersDesc')}</p>
           </header>
-          {membersMessage && <p className="feedback">{membersMessage}</p>}
+          {membersMessage && <p className="inline-feedback">{membersMessage}</p>}
           {!canManageMembers && (
             <p className="muted-text">{t('groups.detail.membersPermission')}</p>
           )}
@@ -493,7 +493,7 @@ export default function GroupDetail() {
                 onChange={setMemberValue}
               />
             </div>
-            <div className="profile-actions">
+            <div className="panel-actions">
               {canManageMembers && (
                 <button className="primary-button" type="submit" disabled={memberAdding}>
                   {memberAdding ? t('groups.detail.memberAdding') : t('groups.detail.memberAdd')}
@@ -556,12 +556,12 @@ export default function GroupDetail() {
           )}
         </section>
 
-        <section className="profile-card">
+        <section className="panel-card">
           <header>
             <h2>{t('groups.detail.mailTitle')}</h2>
             <p>{t('groups.detail.mailDesc')}</p>
           </header>
-          {mailMessage && <p className="feedback">{mailMessage}</p>}
+          {mailMessage && <p className="inline-feedback">{mailMessage}</p>}
           {!canEditMail && (
             <p className="muted-text">{t('groups.detail.mailPermission')}</p>
           )}
@@ -613,7 +613,7 @@ export default function GroupDetail() {
               )}
             </div>
             {canEditMail && (
-              <div className="profile-actions">
+              <div className="panel-actions">
                 <button className="primary-button" type="submit">
                   {t('groups.detail.mailSave')}
                 </button>
@@ -622,7 +622,7 @@ export default function GroupDetail() {
           </form>
         </section>
 
-        <section className="profile-card">
+        <section className="panel-card">
           <header>
             <h2>{t('groups.detail.posixTitle')}</h2>
             <p>{t('groups.detail.posixDesc')}</p>
@@ -630,7 +630,7 @@ export default function GroupDetail() {
           {!canManagePosix && (
             <p className="muted-text">{t('groups.detail.posixNoPermission')}</p>
           )}
-          {posixMessage && <p className="feedback">{posixMessage}</p>}
+          {posixMessage && <p className="inline-feedback">{posixMessage}</p>}
           {posixToken ? (
             <p className="muted-text">
               {t('groups.detail.posixEnabled', {
@@ -652,7 +652,7 @@ export default function GroupDetail() {
                   placeholder={t('groups.detail.gidPlaceholder')}
                 />
               </div>
-              <div className="profile-actions">
+              <div className="panel-actions">
                 <button className="primary-button" type="submit" disabled={posixLoading}>
                   {posixLoading ? t('groups.detail.posixSaving') : t('groups.detail.posixSave')}
                 </button>
@@ -661,7 +661,7 @@ export default function GroupDetail() {
           )}
         </section>
 
-        <section className="profile-card">
+        <section className="panel-card">
           <header>
             <h2>{t('groups.detail.membershipsTitle')}</h2>
             <p>{t('groups.detail.membershipsDesc')}</p>

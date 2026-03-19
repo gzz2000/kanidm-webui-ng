@@ -83,7 +83,7 @@ export default function Oauth2Clients() {
         />
       </div>
 
-      {message && <p className="feedback">{message}</p>}
+      {message && <p className="inline-feedback">{message}</p>}
 
       {loading ? (
         <p className="muted-text">{t('oauth2.list.loading')}</p>

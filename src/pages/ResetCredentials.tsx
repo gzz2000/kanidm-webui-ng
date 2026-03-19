@@ -18,7 +18,7 @@ type ResetState = {
   status: CUStatus
 }
 
-const RESET_SESSION_KEY = 'kanidm.reset.session'
+const RESET_SESSION_KEY = 'kanidm.centered-page.session'
 
 function storeResetSession(payload: ResetState) {
   sessionStorage.setItem(RESET_SESSION_KEY, JSON.stringify(payload.session))
@@ -64,7 +64,7 @@ export default function ResetCredentials() {
       }
       setSearchParams({ token: tokenValue })
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('reset.messageTokenInvalid'))
+      setMessage(error instanceof Error ? error.message : t('centered-page.messageTokenInvalid'))
     } finally {
       setLoading(false)
     }
@@ -100,7 +100,7 @@ export default function ResetCredentials() {
   const handleTokenSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!token) {
-      setMessage(t('reset.messageTokenRequired'))
+      setMessage(t('centered-page.messageTokenRequired'))
       return
     }
     await beginSessionFromToken(token.trim())
@@ -115,7 +115,7 @@ export default function ResetCredentials() {
       clearResetSession()
       navigate('/login')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('reset.messageSaveFailed'))
+      setMessage(error instanceof Error ? error.message : t('centered-page.messageSaveFailed'))
     } finally {
       setLoading(false)
     }
@@ -131,33 +131,33 @@ export default function ResetCredentials() {
       setSession(null)
       setStatus(null)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('reset.messageDiscardFailed'))
+      setMessage(error instanceof Error ? error.message : t('centered-page.messageDiscardFailed'))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <section className="reset">
-      <div className="reset-card">
-        <h1>{t('reset.title')}</h1>
-        <p className="page-note">{t('reset.subtitle')}</p>
+    <section className="centered-page">
+      <div className="centered-card">
+        <h1>{t('centered-page.title')}</h1>
+        <p className="page-note">{t('centered-page.subtitle')}</p>
 
-        {message && <p className="feedback">{message}</p>}
+        {message && <p className="inline-feedback">{message}</p>}
 
         {!hasSession && (
           <form onSubmit={handleTokenSubmit} className="form-actions">
             <label className="field">
-              <span>{t('reset.tokenLabel')}</span>
+              <span>{t('centered-page.tokenLabel')}</span>
               <input
                 value={token}
                 onChange={(event) => setToken(event.target.value)}
-                placeholder={t('reset.tokenPlaceholder')}
+                placeholder={t('centered-page.tokenPlaceholder')}
                 required
               />
             </label>
             <button className="primary-button" type="submit" disabled={loading}>
-              {t('reset.startSession')}
+              {t('centered-page.startSession')}
             </button>
           </form>
         )}
@@ -171,14 +171,14 @@ export default function ResetCredentials() {
               onLoadingChange={setLoading}
               onStatusChange={setStatus}
               onMessage={setMessage}
-              context="reset"
-              leadMessage={t('reset.sessionActive', {
+              context="centered-page"
+              leadMessage={t('centered-page.sessionActive', {
                 displayName: status.displayname,
                 spn: status.spn,
               })}
-              warningsTitle={t('reset.warningsTitle')}
-              tipMessage={t('reset.tipPasskey')}
-              cannotSaveMessage={t('reset.cannotSave')}
+              warningsTitle={t('centered-page.warningsTitle')}
+              tipMessage={t('centered-page.tipPasskey')}
+              cannotSaveMessage={t('centered-page.cannotSave')}
             />
 
             <div className="credential-actions">
@@ -190,7 +190,7 @@ export default function ResetCredentials() {
                 }}
                 disabled={loading}
               >
-                {t('reset.discard')}
+                {t('centered-page.discard')}
               </button>
               <button
                 className="primary-button"
@@ -200,7 +200,7 @@ export default function ResetCredentials() {
                 }}
                 disabled={loading || !status.can_commit}
               >
-                {t('reset.saveCredentialChanges')}
+                {t('centered-page.saveCredentialChanges')}
               </button>
             </div>
           </div>

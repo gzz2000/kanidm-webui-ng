@@ -85,12 +85,12 @@ export default function ServiceAccountCreate() {
         </div>
       </div>
 
-      {message && <p className="feedback">{message}</p>}
+      {message && <p className="inline-feedback">{message}</p>}
       {!canCreate && (
         <p className="muted-text">{t('serviceAccounts.create.permissionDenied')}</p>
       )}
 
-      <div className="profile-card service-account-card">
+      <div className="panel-card service-account-card">
         <header>
           <h2>{t('serviceAccounts.create.basicsTitle')}</h2>
           <p>{t('serviceAccounts.create.basicsDesc')}</p>
@@ -142,7 +142,7 @@ export default function ServiceAccountCreate() {
               placeholder={t('serviceAccounts.create.descriptionPlaceholder')}
             />
           </div>
-          <div className="profile-actions">
+          <div className="panel-actions">
             <button className="primary-button" type="submit" disabled={!canCreate || loading}>
               {loading ? t('serviceAccounts.create.creating') : t('serviceAccounts.create.submit')}
             </button>

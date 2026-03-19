@@ -150,13 +150,13 @@ export default function PersonCreate() {
         </div>
       </div>
 
-      {message && <p className="feedback">{message}</p>}
+      {message && <p className="inline-feedback">{message}</p>}
       {!canCreate && (
         <p className="muted-text">{t('people.create.permissionDenied')}</p>
       )}
 
       {createdPersonId ? (
-        <div className="profile-card person-card">
+        <div className="panel-card person-card">
           <header>
             <h2>{t('people.create.successTitle')}</h2>
             <p>{t('people.create.successSubtitle', { name: createdPersonName ?? name })}</p>
@@ -164,17 +164,17 @@ export default function PersonCreate() {
           {canResetToken && (
             <div className="stacked-form">
               <p>{t('people.create.resetIntro')}</p>
-              {resetMessage && <p className="feedback">{resetMessage}</p>}
+              {resetMessage && <p className="inline-feedback">{resetMessage}</p>}
               {resetToken ? (
-                <div className="reset-summary">
+                <div className="token-summary">
                   <div className="copy-row">
-                    <code>{`${window.location.origin}/reset?token=${resetToken.token}`}</code>
+                    <code>{`${window.location.origin}/centered-page?token=${resetToken.token}`}</code>
                     <button
                       className="secondary-button"
                       type="button"
                       onClick={() => {
                         void navigator.clipboard.writeText(
-                          `${window.location.origin}/reset?token=${resetToken.token}`,
+                          `${window.location.origin}/centered-page?token=${resetToken.token}`,
                         )
                         setResetCopyTip(true)
                         window.setTimeout(() => setResetCopyTip(false), 1600)
@@ -200,7 +200,7 @@ export default function PersonCreate() {
               )}
             </div>
           )}
-          <div className="profile-actions">
+          <div className="panel-actions">
             <button
               className="secondary-button"
               type="button"
@@ -223,7 +223,7 @@ export default function PersonCreate() {
           </div>
         </div>
       ) : (
-        <div className="profile-card person-card">
+        <div className="panel-card person-card">
           <header>
             <h2>{t('people.create.basicsTitle')}</h2>
             <p>{t('people.create.basicsDesc')}</p>
@@ -260,7 +260,7 @@ export default function PersonCreate() {
             ) : groups.length > 0 ? (
               <div className="field">
                 <label>{t('people.create.groupLabel')}</label>
-                {groupMessage && <p className="feedback">{groupMessage}</p>}
+                {groupMessage && <p className="inline-feedback">{groupMessage}</p>}
                 <div className="stacked-form">
                   {groups.map((group) => (
                     <label className="checkbox" key={group.uuid}>
@@ -295,7 +295,7 @@ export default function PersonCreate() {
                 <span>{t('people.create.posixToggle')}</span>
               </label>
             )}
-            <div className="profile-actions">
+            <div className="panel-actions">
               <button className="primary-button" type="submit" disabled={!canCreate || loading}>
                 {loading ? t('people.create.creating') : t('people.create.submit')}
               </button>

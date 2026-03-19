@@ -630,13 +630,13 @@ export default function ServiceAccountDetail() {
         </div>
       </div>
 
-      <div className="profile-grid">
-        <section className="profile-card service-account-card">
+      <div className="card-grid">
+        <section className="panel-card service-account-card">
           <header>
             <h2>{t('serviceAccounts.detail.identityTitle')}</h2>
             <p>{t('serviceAccounts.detail.identityDesc')}</p>
           </header>
-          {identityMessage && <p className="feedback">{identityMessage}</p>}
+          {identityMessage && <p className="inline-feedback">{identityMessage}</p>}
           <form className="stacked-form" onSubmit={handleIdentitySubmit}>
             <div className="field">
               <label>{t('serviceAccounts.detail.accountName')}</label>
@@ -693,7 +693,7 @@ export default function ServiceAccountDetail() {
               )}
             </div>
             {(canEditName || canEditDisplayName || canEditDescription || canEditEntryManagedBy) && (
-              <div className="profile-actions">
+              <div className="panel-actions">
                 <button className="primary-button" type="submit">
                   {t('serviceAccounts.detail.saveIdentity')}
                 </button>
@@ -702,12 +702,12 @@ export default function ServiceAccountDetail() {
           </form>
         </section>
 
-        <section className="profile-card service-account-card">
+        <section className="panel-card service-account-card">
           <header>
             <h2>{t('serviceAccounts.detail.apiTokensTitle')}</h2>
             <p>{t('serviceAccounts.detail.apiTokensDesc')}</p>
           </header>
-          {apiTokenMessage && <p className="feedback">{apiTokenMessage}</p>}
+          {apiTokenMessage && <p className="inline-feedback">{apiTokenMessage}</p>}
           {createdToken && (
             <div className="service-account-token">
               <p className="muted-text">{t('serviceAccounts.detail.apiTokenShownOnce')}</p>
@@ -754,7 +754,7 @@ export default function ServiceAccountDetail() {
                 />
                 {t('serviceAccounts.detail.apiTokenReadWrite')}
               </label>
-              <div className="profile-actions">
+              <div className="panel-actions">
                 <button className="primary-button" type="submit" disabled={apiTokenLoading}>
                   {apiTokenLoading ? t('serviceAccounts.detail.apiTokenGenerating') : t('serviceAccounts.detail.apiTokenGenerate')}
                 </button>
@@ -813,12 +813,12 @@ export default function ServiceAccountDetail() {
           </div>
         </section>
 
-        <section className="profile-card service-account-card">
+        <section className="panel-card service-account-card">
           <header>
             <h2>{t('serviceAccounts.detail.validityTitle')}</h2>
             <p>{t('serviceAccounts.detail.validityDesc')}</p>
           </header>
-          {validityMessage && <p className="feedback">{validityMessage}</p>}
+          {validityMessage && <p className="inline-feedback">{validityMessage}</p>}
           <form className="stacked-form" onSubmit={handleValiditySubmit}>
             <div className="field">
               <label>{t('serviceAccounts.detail.validFrom')}</label>
@@ -846,7 +846,7 @@ export default function ServiceAccountDetail() {
                 }}
               />
             </div>
-            <div className="profile-actions">
+            <div className="panel-actions">
               {canManageValidity && (
                 <button className="primary-button" type="submit">
                   {t('serviceAccounts.detail.saveValidity')}
@@ -856,12 +856,12 @@ export default function ServiceAccountDetail() {
           </form>
         </section>
 
-        <section className="profile-card service-account-card">
+        <section className="panel-card service-account-card">
           <header>
             <h2>{t('serviceAccounts.detail.credentialsTitle')}</h2>
             <p>{t('serviceAccounts.detail.credentialsDesc')}</p>
           </header>
-          {credentialMessage && <p className="feedback">{credentialMessage}</p>}
+          {credentialMessage && <p className="inline-feedback">{credentialMessage}</p>}
           {isBuiltin ? (
             <p className="muted-text">{t('serviceAccounts.detail.builtinCredentials')}</p>
           ) : (
@@ -877,7 +877,7 @@ export default function ServiceAccountDetail() {
                   )}</strong>
                 </div>
               </div>
-              <div className="profile-actions">
+              <div className="panel-actions">
                 {canManageCredentials && (
                   <button
                     className="primary-button"
@@ -904,12 +904,12 @@ export default function ServiceAccountDetail() {
           )}
         </section>
 
-        <section className="profile-card service-account-card">
+        <section className="panel-card service-account-card">
           <header>
             <h2>{t('serviceAccounts.detail.posixTitle')}</h2>
             <p>{t('serviceAccounts.detail.posixDesc')}</p>
           </header>
-          {posixMessage && <p className="feedback">{posixMessage}</p>}
+          {posixMessage && <p className="inline-feedback">{posixMessage}</p>}
           {!canManagePosix && (
             <p className="muted-text">{t('serviceAccounts.detail.posixNoPermission')}</p>
           )}
@@ -949,7 +949,7 @@ export default function ServiceAccountDetail() {
                   placeholder={t('serviceAccounts.detail.shellPlaceholder')}
                 />
               </div>
-              <div className="profile-actions">
+              <div className="panel-actions">
                 <button className="primary-button" type="submit" disabled={posixLoading}>
                   {posixLoading ? t('serviceAccounts.detail.posixSaving') : t('serviceAccounts.detail.posixSave')}
                 </button>
@@ -958,12 +958,12 @@ export default function ServiceAccountDetail() {
           )}
         </section>
 
-        <section className="profile-card service-account-card">
+        <section className="panel-card service-account-card">
           <header>
             <h2>{t('profile.ssh.title')}</h2>
             <p>{t('profile.ssh.subtitle')}</p>
           </header>
-          {sshMessage && <p className="feedback">{sshMessage}</p>}
+          {sshMessage && <p className="inline-feedback">{sshMessage}</p>}
           {canManageSshKeys && sshKeys.length === 0 ? (
             <form className="stacked-form" onSubmit={handleSshSubmit}>
               <div className="field">
@@ -992,7 +992,7 @@ export default function ServiceAccountDetail() {
                   }}
                 />
               </div>
-              <div className="profile-actions">
+              <div className="panel-actions">
                 <button
                   className="primary-button"
                   type="submit"
@@ -1032,7 +1032,7 @@ export default function ServiceAccountDetail() {
                     }}
                   />
                 </div>
-                <div className="profile-actions">
+                <div className="panel-actions">
                   <button
                     className="primary-button"
                     type="submit"
@@ -1097,12 +1097,12 @@ export default function ServiceAccountDetail() {
           </div>
         </section>
 
-        <section className="profile-card service-account-card">
+        <section className="panel-card service-account-card">
           <header>
             <h2>{t('serviceAccounts.detail.emailTitle')}</h2>
             <p>{t('serviceAccounts.detail.emailDesc')}</p>
           </header>
-          {emailMessage && <p className="feedback">{emailMessage}</p>}
+          {emailMessage && <p className="inline-feedback">{emailMessage}</p>}
           {!canEditEmail && <p className="muted-text">{t('serviceAccounts.detail.emailPermission')}</p>}
           <div className="profile-emails">
             <div className="profile-emails-header">
@@ -1149,7 +1149,7 @@ export default function ServiceAccountDetail() {
             )}
           </div>
           {canEditEmail && (
-            <div className="profile-actions">
+            <div className="panel-actions">
               <button className="primary-button" type="button" onClick={handleEmailSave}>
                 {t('serviceAccounts.detail.emailSave')}
               </button>
@@ -1157,7 +1157,7 @@ export default function ServiceAccountDetail() {
           )}
         </section>
 
-        <section className="profile-card service-account-card">
+        <section className="panel-card service-account-card">
           <header>
             <h2>{t('serviceAccounts.detail.groupsTitle')}</h2>
             <p>{t('serviceAccounts.detail.groupsDesc')}</p>

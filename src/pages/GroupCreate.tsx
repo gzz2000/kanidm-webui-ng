@@ -78,12 +78,12 @@ export default function GroupCreate() {
         </div>
       </div>
 
-      {message && <p className="feedback">{message}</p>}
+      {message && <p className="inline-feedback">{message}</p>}
       {!canCreate && (
         <p className="muted-text">{t('groups.create.permissionDenied')}</p>
       )}
 
-      <div className="profile-card">
+      <div className="panel-card">
         <header>
           <h2>{t('groups.create.basicsTitle')}</h2>
           <p>{t('groups.create.basicsDesc')}</p>
@@ -115,7 +115,7 @@ export default function GroupCreate() {
               <p className="muted-text">{t('groups.create.entryManagerTip')}</p>
             )}
           </div>
-          <div className="profile-actions">
+          <div className="panel-actions">
             <button className="primary-button" type="submit" disabled={!canCreate || loading}>
               {loading ? t('groups.create.creating') : t('groups.create.submit')}
             </button>

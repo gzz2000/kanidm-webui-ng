@@ -108,7 +108,7 @@ export default function ServiceAccounts() {
         )}
       </div>
 
-      {message && <p className="feedback">{message}</p>}
+      {message && <p className="inline-feedback">{message}</p>}
 
       {loading ? (
         <p className="page-note">{t('serviceAccounts.loading')}</p>

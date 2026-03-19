@@ -264,7 +264,7 @@ export function AccessProvider({ children }: { children: React.ReactNode }) {
               <h3>{t('profile.reauthTitle')}</h3>
               <p>{t('profile.reauthSubtitle')}</p>
             </header>
-            {reauthMessage && <p className="feedback">{reauthMessage}</p>}
+            {reauthMessage && <p className="inline-feedback">{reauthMessage}</p>}
 
             {reauthAllowed.length > 0 && (
               <div className="reauth-options">

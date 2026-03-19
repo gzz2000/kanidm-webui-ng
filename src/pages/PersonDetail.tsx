@@ -456,7 +456,7 @@ export default function PersonDetail() {
     )
   }
 
-  const resetLink = resetToken ? `${window.location.origin}/reset?token=${resetToken.token}` : ''
+  const resetLink = resetToken ? `${window.location.origin}/centered-page?token=${resetToken.token}` : ''
   const passkeys = passkeySummary
 
   return (
@@ -485,13 +485,13 @@ export default function PersonDetail() {
         </div>
       </div>
 
-      <div className="profile-grid person-grid">
-        <div className="profile-card person-card">
+      <div className="card-grid person-grid">
+        <div className="panel-card person-card">
           <header>
             <h2>{t('people.detail.identityTitle')}</h2>
             <p>{t('people.detail.identityDesc')}</p>
           </header>
-          {identityMessage && <p className="feedback">{identityMessage}</p>}
+          {identityMessage && <p className="inline-feedback">{identityMessage}</p>}
           <div className="field">
             <label>{t('people.labels.username')}</label>
             <input
@@ -527,7 +527,7 @@ export default function PersonDetail() {
             )}
           </div>
           {isPeopleAdmin && (
-            <div className="profile-actions">
+            <div className="panel-actions">
               <button
                 className="primary-button"
                 type="button"
@@ -539,12 +539,12 @@ export default function PersonDetail() {
           )}
         </div>
 
-        <div className="profile-card person-card">
+        <div className="panel-card person-card">
           <header>
             <h2>{t('people.detail.emailTitle')}</h2>
             <p>{t('people.detail.emailDesc')}</p>
           </header>
-          {emailMessage && <p className="feedback">{emailMessage}</p>}
+          {emailMessage && <p className="inline-feedback">{emailMessage}</p>}
           {canReadPii ? (
             <div className="profile-emails">
               <div className="profile-emails-header">
@@ -588,7 +588,7 @@ export default function PersonDetail() {
             <p className="muted-text">{t('people.detail.piiHidden')}</p>
           )}
           {isPeopleAdmin && canReadPii && (
-            <div className="profile-actions">
+            <div className="panel-actions">
               <button
                 className="primary-button"
                 type="button"
@@ -600,12 +600,12 @@ export default function PersonDetail() {
           )}
         </div>
 
-        <div className="profile-card person-card">
+        <div className="panel-card person-card">
           <header>
             <h2>{t('people.detail.validityTitle')}</h2>
             <p>{t('people.detail.validityDesc')}</p>
           </header>
-          {validityMessage && <p className="feedback">{validityMessage}</p>}
+          {validityMessage && <p className="inline-feedback">{validityMessage}</p>}
           <div className="field">
             <label>{t('people.labels.validFrom')}</label>
             <input
@@ -631,7 +631,7 @@ export default function PersonDetail() {
             />
           </div>
           {canManageValidity && (
-            <div className="profile-actions">
+            <div className="panel-actions">
               <button
                 className="secondary-button"
                 type="button"
@@ -650,12 +650,12 @@ export default function PersonDetail() {
           )}
         </div>
 
-        <div className="profile-card person-card">
+        <div className="panel-card person-card">
           <header>
             <h2>{t('people.detail.credentialsTitle')}</h2>
             <p>{t('people.detail.credentialsDesc')}</p>
           </header>
-          {credentialMessage && <p className="feedback">{credentialMessage}</p>}
+          {credentialMessage && <p className="inline-feedback">{credentialMessage}</p>}
           <div className="credential-summary">
             <div>
               <strong>{t('people.labels.passkeys')}</strong>
@@ -690,7 +690,7 @@ export default function PersonDetail() {
                   {t('people.detail.resetTtlHelp')}
                 </span>
               </div>
-              <div className="profile-actions">
+              <div className="panel-actions">
                 <button
                   className="primary-button"
                   type="button"
@@ -702,14 +702,14 @@ export default function PersonDetail() {
               </div>
             </>
           )}
-          {resetMessage && <p className="feedback">{resetMessage}</p>}
+          {resetMessage && <p className="inline-feedback">{resetMessage}</p>}
           {!allowResetToken && canResetToken && personHighPrivilege && !isPeopleAdmin && (
             <p className="muted-text">
               {t('people.detail.resetHighPrivDenied')}
             </p>
           )}
           {resetToken && (
-            <div className="reset-summary">
+            <div className="token-summary">
               <div className="field">
                 <label>{t('people.labels.resetToken')}</label>
                 <code>{resetToken.token}</code>
@@ -739,7 +739,7 @@ export default function PersonDetail() {
           )}
         </div>
 
-        <div className="profile-card person-card">
+        <div className="panel-card person-card">
           <header>
             <h2>{t('people.detail.posixTitle')}</h2>
             <p>{t('people.detail.posixDesc')}</p>
@@ -747,7 +747,7 @@ export default function PersonDetail() {
           {!canManagePosix && (
             <p className="muted-text">{t('people.detail.posixNoPermission')}</p>
           )}
-          {posixMessage && <p className="feedback">{posixMessage}</p>}
+          {posixMessage && <p className="inline-feedback">{posixMessage}</p>}
           {posixToken ? (
             <p className="muted-text">
               {t('people.detail.posixEnabled', {
@@ -780,7 +780,7 @@ export default function PersonDetail() {
                   onFocus={() => requestReauthIfNeeded(canManagePosix)}
                 />
               </div>
-              <div className="profile-actions">
+              <div className="panel-actions">
                 <button
                   className="primary-button"
                   type="button"
@@ -794,7 +794,7 @@ export default function PersonDetail() {
           )}
         </div>
 
-        <div className="profile-card person-card">
+        <div className="panel-card person-card">
           <header>
             <h2>{t('people.detail.groupsTitle')}</h2>
             <p>{t('people.detail.groupsDesc')}</p>

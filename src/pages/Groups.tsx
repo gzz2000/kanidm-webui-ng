@@ -108,7 +108,7 @@ export default function Groups() {
         )}
       </div>
 
-      {message && <p className="feedback">{message}</p>}
+      {message && <p className="inline-feedback">{message}</p>}
 
       {loading ? (
         <p className="page-note">{t('groups.loading')}</p>

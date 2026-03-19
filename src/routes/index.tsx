@@ -9,6 +9,9 @@ import Login from '../pages/Login'
 import Oauth2ClientCreate from '../pages/Oauth2ClientCreate'
 import Oauth2ClientDetail from '../pages/Oauth2ClientDetail'
 import Oauth2Clients from '../pages/Oauth2Clients'
+import Oauth2Authorise from '../pages/Oauth2Authorise'
+import Oauth2Consent from '../pages/Oauth2Consent'
+import Oauth2Resume from '../pages/Oauth2Resume'
 import People from '../pages/People'
 import PersonCreate from '../pages/PersonCreate'
 import PersonDetail from '../pages/PersonDetail'
@@ -27,6 +30,18 @@ export const router = createBrowserRouter([
   {
     path: '/reset',
     element: <ResetCredentials />,
+  },
+  {
+    path: '/oauth2/authorise',
+    element: <Oauth2Authorise />,
+  },
+  {
+    path: '/oauth2/consent',
+    element: <Oauth2Consent />,
+  },
+  {
+    path: '/oauth2/resume',
+    element: <Oauth2Resume />,
   },
   {
     path: '/',

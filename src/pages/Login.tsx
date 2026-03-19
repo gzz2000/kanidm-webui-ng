@@ -10,6 +10,7 @@ import {
 } from '../api'
 import { performPasskeyRequest } from '../auth/webauthn'
 import { useAuth } from '../auth/AuthContext'
+import { loadOauth2PendingRequest } from '../auth/oauth2FlowState'
 import type { AuthAllowed, AuthMech, AuthResponse } from '../api/types'
 
 function findAllowed(
@@ -57,6 +58,10 @@ export default function Login() {
 
   const handleSuccess = async () => {
     await setAuthenticated()
+    if (loadOauth2PendingRequest()) {
+      navigate('/oauth2/resume')
+      return
+    }
     navigate('/')
   }
 
