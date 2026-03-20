@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import { fetchServiceAccounts } from '../api'
 import type { ServiceAccountSummary } from '../api/serviceAccounts'
 import { useAccess } from '../auth/AccessContext'
@@ -18,10 +19,20 @@ export default function ServiceAccounts() {
   const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [hideUnmanaged, setHideUnmanaged] = useState(true)
-  const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState<string | null>(null)
-  const [accounts, setAccounts] = useState<ServiceAccountSummary[]>([])
-  const pendingRef = useRef<Promise<ServiceAccountSummary[]> | null>(null)
+  const accountsQuery = useQuery({
+    queryKey: ['service-accounts-list'],
+    queryFn: fetchServiceAccounts,
+    staleTime: 30_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
+  const accounts: ServiceAccountSummary[] = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data])
+  const loading = accountsQuery.isPending
+  const message = accountsQuery.isError
+    ? accountsQuery.error instanceof Error
+      ? accountsQuery.error.message
+      : t('serviceAccounts.messages.listFailed')
+    : null
 
   const isAdmin = useMemo(() => isServiceAccountAdmin(memberOf), [memberOf])
   const canCreate = isAdmin
@@ -29,32 +40,6 @@ export default function ServiceAccounts() {
     return (account: ServiceAccountSummary) =>
       canManageServiceAccountEntry(account.entryManagedBy, user, memberOf)
   }, [memberOf, user])
-
-  useEffect(() => {
-    let active = true
-    setLoading(true)
-    setMessage(null)
-    if (!pendingRef.current) {
-      pendingRef.current = fetchServiceAccounts()
-    }
-    pendingRef.current
-      .then((entries) => {
-        if (!active) return
-        setAccounts(entries)
-      })
-      .catch((error) => {
-        if (!active) return
-        setMessage(error instanceof Error ? error.message : t('serviceAccounts.messages.listFailed'))
-      })
-      .finally(() => {
-        pendingRef.current = null
-        if (!active) return
-        setLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [])
 
   const filteredAccounts = useMemo(() => {
     const needle = query.trim().toLowerCase()

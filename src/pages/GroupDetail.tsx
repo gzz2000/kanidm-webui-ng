@@ -2,6 +2,7 @@ import type { FormEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import {
   addGroupMembers,
   clearGroupAttr,
@@ -63,6 +64,30 @@ export default function GroupDetail() {
   const [posixMessage, setPosixMessage] = useState<string | null>(null)
   const [posixLoading, setPosixLoading] = useState(false)
   const [posixGid, setPosixGid] = useState('')
+  const groupQuery = useQuery({
+    queryKey: ['group-detail', id],
+    queryFn: () => fetchGroup(id!),
+    enabled: Boolean(id),
+    staleTime: 30_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
+  const membersQuery = useQuery({
+    queryKey: ['group-members', groupMeta?.uuid],
+    queryFn: () => fetchGroupMembers(groupMeta!.uuid),
+    enabled: Boolean(groupMeta?.uuid),
+    staleTime: 30_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
+  const posixQuery = useQuery({
+    queryKey: ['group-posix-token', groupMeta?.uuid],
+    queryFn: () => fetchGroupUnixToken(groupMeta!.uuid),
+    enabled: Boolean(groupMeta?.uuid),
+    staleTime: 30_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
 
   const isAccessAdmin = useMemo(() => isAccessControlAdmin(memberOf), [memberOf])
   const canManagePosix = useMemo(() => isUnixAdmin(memberOf), [memberOf])
@@ -135,40 +160,62 @@ export default function GroupDetail() {
   useEffect(() => {
     if (!id) {
       navigate('/admin/groups', { replace: true })
+    }
+  }, [id, navigate])
+
+  useEffect(() => {
+    setLoading(groupQuery.isPending)
+    if (groupQuery.isError) {
+      setMessage(groupQuery.error instanceof Error ? groupQuery.error.message : t('groups.messages.loadFailed'))
       return
     }
-
-    let active = true
-    const load = async () => {
-      setLoading(true)
-      setMessage(null)
-      setMembersMessage(null)
-      setPosixMessage(null)
-      try {
-        const group = await fetchGroup(id)
-        if (!active) return
-        if (!group) {
-          setMessage(t('groups.detail.notFound'))
-          return
-        }
-        setFormState(group)
-        if (group.uuid && group.uuid !== id) {
-          navigate(`/admin/groups/${group.uuid}`, { replace: true })
-        }
-        await Promise.all([loadMembers(group.uuid), loadPosix(group.uuid)])
-      } catch (error) {
-        setMessage(error instanceof Error ? error.message : t('groups.messages.loadFailed'))
-      } finally {
-        if (!active) return
-        setLoading(false)
+    const group = groupQuery.data
+    if (!group) {
+      if (!groupQuery.isPending) {
+        setMessage(t('groups.detail.notFound'))
       }
+      return
     }
+    setMessage(null)
+    setFormState(group)
+    if (id && group.uuid && group.uuid !== id) {
+      navigate(`/admin/groups/${group.uuid}`, { replace: true })
+    }
+  }, [groupQuery.data, groupQuery.error, groupQuery.isError, groupQuery.isPending, id, navigate, t])
 
-    void load()
-    return () => {
-      active = false
+  useEffect(() => {
+    setMembersLoading(membersQuery.isPending)
+    if (membersQuery.isError) {
+      setMembersMessage(
+        membersQuery.error instanceof Error ? membersQuery.error.message : t('groups.messages.membersLoadFailed'),
+      )
+      return
     }
-  }, [id, navigate, t])
+    if (membersQuery.isSuccess) {
+      setMembers(membersQuery.data)
+      setMembersMessage(null)
+    }
+  }, [membersQuery.data, membersQuery.error, membersQuery.isError, membersQuery.isPending, membersQuery.isSuccess, t])
+
+  useEffect(() => {
+    if (posixQuery.isError) {
+      if (isNotFound(posixQuery.error)) {
+        setPosixToken(null)
+        setPosixGid('')
+        setPosixMessage(null)
+      } else {
+        setPosixMessage(
+          posixQuery.error instanceof Error ? posixQuery.error.message : t('groups.messages.posixLoadFailed'),
+        )
+      }
+      return
+    }
+    if (posixQuery.isSuccess) {
+      setPosixToken(posixQuery.data)
+      setPosixGid(posixQuery.data.gidnumber ? String(posixQuery.data.gidnumber) : '')
+      setPosixMessage(null)
+    }
+  }, [posixQuery.data, posixQuery.error, posixQuery.isError, posixQuery.isSuccess, t])
 
   const handleIdentitySubmit = async (event: FormEvent) => {
     event.preventDefault()

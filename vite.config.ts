@@ -48,6 +48,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/manifest.webmanifest': {
+        target: 'https://localhost:8443',
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 })

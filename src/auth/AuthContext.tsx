@@ -1,4 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { SelfProfile } from '../api'
 import { clearAuthToken, fetchSelfProfile, logout } from '../api'
 import { tokenStore } from '../api/http'
@@ -17,84 +19,72 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient()
   const [status, setStatus] = useState<AuthStatus>('checking')
   const [user, setUser] = useState<UserProfile | null>(null)
+  const hasToken = Boolean(tokenStore.get())
 
-  const refreshUser = useCallback(async () => {
-    const profile = await fetchSelfProfile()
-    setUser(profile)
-    return profile
-  }, [])
+  const selfQuery = useQuery({
+    queryKey: ['selfProfile'],
+    queryFn: fetchSelfProfile,
+    enabled: hasToken,
+    staleTime: 30_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
 
   useEffect(() => {
-    if (status !== 'checking') return
-
-    let cancelled = false
-
-    const check = async () => {
-      if (!tokenStore.get()) {
-        if (!cancelled) {
-          setStatus('unauthenticated')
-          setUser(null)
-        }
-        return
-      }
-
-      try {
-        await refreshUser()
-        if (!cancelled) {
-          setStatus('authenticated')
-        }
-      } catch {
-        if (!cancelled) {
-          setStatus('unauthenticated')
-          setUser(null)
-        }
-      }
+    if (!hasToken) {
+      setStatus('unauthenticated')
+      setUser(null)
+      return
     }
+    if (selfQuery.isPending) {
+      setStatus('checking')
+      return
+    }
+    if (selfQuery.isSuccess) {
+      setUser(selfQuery.data)
+      setStatus('authenticated')
+      return
+    }
+    if (selfQuery.isError) {
+      setUser(null)
+      setStatus('unauthenticated')
+    }
+  }, [hasToken, selfQuery.data, selfQuery.isError, selfQuery.isPending, selfQuery.isSuccess])
 
-    void check()
-
+  useEffect(() => {
     const handleAuthExpired = () => {
-      if (!cancelled) {
-        setStatus('unauthenticated')
-        setUser(null)
-      }
+      setStatus('unauthenticated')
+      setUser(null)
+      void queryClient.invalidateQueries({ queryKey: ['selfProfile'] })
     }
-
     window.addEventListener('kanidm:auth-expired', handleAuthExpired)
-
     return () => {
-      cancelled = true
       window.removeEventListener('kanidm:auth-expired', handleAuthExpired)
     }
-  }, [status, refreshUser])
-
-  useEffect(() => {
-    if (status === 'checking' && user) {
-      setStatus('authenticated')
-    }
-  }, [status, user])
+  }, [queryClient])
 
   const value = useMemo(
     () => ({
       status,
       user,
       setAuthenticated: async () => {
-        setStatus('authenticated')
-        await refreshUser()
+        await selfQuery.refetch()
       },
       signOut: async () => {
         try {
           await logout()
         } finally {
           clearAuthToken()
+          queryClient.removeQueries({ queryKey: ['selfProfile'] })
           setStatus('unauthenticated')
           setUser(null)
         }
       },
     }),
-    [status, user, refreshUser],
+    [queryClient, selfQuery, status, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -48,6 +48,22 @@
   letter-spacing: 0.02em;
 }
 
+.brand-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brand-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
 .brand-subtitle {
   margin-top: 4px;
   font-size: 12px;
@@ -152,6 +168,18 @@
 .page-note {
   color: var(--muted);
   margin: 0;
+}
+
+.system-page-note {
+  margin-bottom: 16px;
+}
+
+.system-page .card-grid {
+  margin-top: 8px;
+}
+
+.system-page .ssh-add-toggle .secondary-button {
+  margin-top: 10px;
 }
 
 .people-page {
@@ -845,6 +873,18 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.centered-brand-image-wrap {
+  margin-bottom: 8px;
+}
+
+.centered-brand-image {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid var(--border);
 }
 
 .field {

@@ -1,5 +1,7 @@
+/* eslint-disable react-refresh/only-export-components */
 import type { FormEvent } from 'react'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { authPasskey, authPassword, authTotp, fetchUserAuthToken, reauthBegin } from '../api'
 import type { AuthAllowed, AuthResponse } from '../api/types'
@@ -73,7 +75,7 @@ export function AccessProvider({ children }: { children: React.ReactNode }) {
   const [reauthTotp, setReauthTotp] = useState('')
   const [reauthPassword, setReauthPassword] = useState('')
 
-  const memberOf = user?.memberOf ?? []
+  const memberOf = useMemo(() => user?.memberOf ?? [], [user?.memberOf])
   const permissions = useMemo(
     () => ({
       nameAllowed: hasAnyGroup(memberOf, SELF_NAME_WRITE_GROUPS),
@@ -102,23 +104,29 @@ export function AccessProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearInterval(timer)
   }, [rwExpiry])
 
-  const refreshUat = useCallback(async () => {
-    try {
-      const nextToken = await fetchUserAuthToken()
-      setUat(nextToken)
-      setNow(Date.now())
-    } catch {
-      setUat(null)
-    }
-  }, [])
+  const uatQuery = useQuery({
+    queryKey: ['selfUat'],
+    queryFn: fetchUserAuthToken,
+    enabled: status === 'authenticated',
+    staleTime: 10_000,
+    gcTime: 120_000,
+    retry: 0,
+  })
 
   useEffect(() => {
     if (status !== 'authenticated') {
       setUat(null)
       return
     }
-    void refreshUat()
-  }, [status, refreshUat])
+    if (uatQuery.isSuccess) {
+      setUat(uatQuery.data)
+      setNow(Date.now())
+      return
+    }
+    if (uatQuery.isError) {
+      setUat(null)
+    }
+  }, [status, uatQuery.data, uatQuery.isError, uatQuery.isSuccess])
 
   const beginReauth = useCallback(async () => {
     if (status !== 'authenticated') return
@@ -133,7 +141,7 @@ export function AccessProvider({ children }: { children: React.ReactNode }) {
       const response = await reauthBegin()
       if (authSucceeded(response)) {
         await setAuthenticated()
-        await refreshUat()
+        await uatQuery.refetch()
         setReauthOpen(false)
         return
       }
@@ -147,7 +155,7 @@ export function AccessProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setReauthLoading(false)
     }
-  }, [reauthLoading, refreshUat, setAuthenticated, status, t])
+  }, [reauthLoading, setAuthenticated, status, t, uatQuery])
 
   const handleReauthPassword = async (event: FormEvent) => {
     event.preventDefault()
@@ -195,7 +203,7 @@ export function AccessProvider({ children }: { children: React.ReactNode }) {
 
       if (response && authSucceeded(response)) {
         await setAuthenticated()
-        await refreshUat()
+        await uatQuery.refetch()
         setReauthOpen(false)
         setReauthPassword('')
         setReauthTotp('')
@@ -224,7 +232,7 @@ export function AccessProvider({ children }: { children: React.ReactNode }) {
       const response = await authPasskey(credential as Record<string, unknown>)
       if (authSucceeded(response)) {
         await setAuthenticated()
-        await refreshUat()
+        await uatQuery.refetch()
         setReauthOpen(false)
       } else {
         setReauthMessage(t('profile.messageReauthPasskeyFailed'))

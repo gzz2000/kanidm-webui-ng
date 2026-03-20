@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import { fetchOauth2Clients } from '../api'
 import type { Oauth2ClientSummary } from '../api/oauth2'
 import { useAccess } from '../auth/AccessContext'
@@ -12,36 +13,20 @@ export default function Oauth2Clients() {
   const { memberOf } = useAccess()
   const isAdmin = useMemo(() => isOauth2Admin(memberOf), [memberOf])
   const [query, setQuery] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState<string | null>(null)
-  const [clients, setClients] = useState<Oauth2ClientSummary[]>([])
-  const pendingRef = useRef<Promise<Oauth2ClientSummary[]> | null>(null)
-
-  useEffect(() => {
-    let active = true
-    setLoading(true)
-    setMessage(null)
-    if (!pendingRef.current) {
-      pendingRef.current = fetchOauth2Clients()
-    }
-    pendingRef.current
-      .then((entries) => {
-        if (!active) return
-        setClients(entries)
-      })
-      .catch((error) => {
-        if (!active) return
-        setMessage(error instanceof Error ? error.message : t('oauth2.messages.listFailed'))
-      })
-      .finally(() => {
-        pendingRef.current = null
-        if (!active) return
-        setLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [])
+  const clientsQuery = useQuery({
+    queryKey: ['oauth2-clients-list'],
+    queryFn: fetchOauth2Clients,
+    staleTime: 30_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
+  const clients: Oauth2ClientSummary[] = useMemo(() => clientsQuery.data ?? [], [clientsQuery.data])
+  const loading = clientsQuery.isPending
+  const message = clientsQuery.isError
+    ? clientsQuery.error instanceof Error
+      ? clientsQuery.error.message
+      : t('oauth2.messages.listFailed')
+    : null
 
   const filteredClients = useMemo(() => {
     const needle = query.trim().toLowerCase()

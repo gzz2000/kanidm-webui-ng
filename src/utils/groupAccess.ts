@@ -44,6 +44,22 @@ export function isOauth2Admin(memberOf: string[]) {
   return hasAnyGroup(memberOf, ['idm_oauth2_admins'])
 }
 
+export function isDomainAdmin(memberOf: string[]) {
+  return hasAnyGroup(memberOf, ['domain_admins'])
+}
+
+export function isAccountPolicyAdmin(memberOf: string[]) {
+  return hasAnyGroup(memberOf, ['idm_account_policy_admins'])
+}
+
+export function isMessageAdmin(memberOf: string[]) {
+  return hasAnyGroup(memberOf, ['idm_message_admins'])
+}
+
+export function isMessageSender(memberOf: string[]) {
+  return hasAnyGroup(memberOf, ['idm_message_senders'])
+}
+
 export function isUnixAdmin(memberOf: string[]) {
   return hasAnyGroup(memberOf, ['idm_unix_admins'])
 }

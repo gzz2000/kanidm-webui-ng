@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import { fetchGroups, fetchPeople, fetchServiceAccounts } from '../api'
 import type { GroupSummary } from '../api/groups'
 import type { PersonSummary } from '../api/people'
@@ -87,48 +88,31 @@ export default function AccountGroupSelect({
 }: AccountGroupSelectProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [query, setQuery] = useState(value)
-  const [options, setOptions] = useState<AccountGroupOption[]>([])
-  const pendingRef = useRef<Promise<AccountGroupOption[]> | null>(null)
-  const loadedRef = useRef(false)
-
-  useEffect(() => {
-    if (!open) {
-      setQuery(value)
-    }
-  }, [open, value])
-
-  useEffect(() => {
-    if (!open || loadedRef.current || pendingRef.current) return
-    if (!includePeople && !includeGroups && !includeServiceAccounts) return
-    setLoading(true)
-
-    const tasks: Promise<AccountGroupOption[]>[] = []
-    if (includePeople) {
-      tasks.push(fetchPeople().then((entries) => entries.map(toPersonOption)))
-    }
-    if (includeGroups) {
-      tasks.push(fetchGroups().then((entries) => entries.map(toGroupOption)))
-    }
-    if (includeServiceAccounts) {
-      tasks.push(fetchServiceAccounts().then((entries) => entries.map(toServiceAccountOption)))
-    }
-
-    pendingRef.current = Promise.all(tasks)
-      .then((lists) => lists.flat())
-      .then((entries) => {
-        const map = new Map(entries.map((entry) => [entry.uuid, entry]))
-        const next = Array.from(map.values())
-        setOptions(next)
-        loadedRef.current = true
-        return next
-      })
-      .finally(() => {
-        pendingRef.current = null
-        setLoading(false)
-      })
-  }, [open, includePeople, includeGroups, includeServiceAccounts])
+  const [query, setQuery] = useState('')
+  const optionsQuery = useQuery({
+    queryKey: ['account-group-select', includePeople, includeGroups, includeServiceAccounts],
+    queryFn: async () => {
+      const tasks: Promise<AccountGroupOption[]>[] = []
+      if (includePeople) {
+        tasks.push(fetchPeople().then((entries) => entries.map(toPersonOption)))
+      }
+      if (includeGroups) {
+        tasks.push(fetchGroups().then((entries) => entries.map(toGroupOption)))
+      }
+      if (includeServiceAccounts) {
+        tasks.push(fetchServiceAccounts().then((entries) => entries.map(toServiceAccountOption)))
+      }
+      const lists = await Promise.all(tasks)
+      const map = new Map(lists.flat().map((entry) => [entry.uuid, entry]))
+      return Array.from(map.values())
+    },
+    enabled: open && (includePeople || includeGroups || includeServiceAccounts),
+    staleTime: 300_000,
+    gcTime: 900_000,
+    retry: 0,
+  })
+  const options = useMemo(() => optionsQuery.data ?? [], [optionsQuery.data])
+  const loading = optionsQuery.isPending
 
   const filtered = useMemo(
     () => options.filter((option) => matchesOption(option, query)),
@@ -158,25 +142,25 @@ export default function AccountGroupSelect({
     <div className="entry-manager-picker">
       <input
         className="entry-manager-input"
-        value={value}
+        value={open ? query : value}
         onChange={(event) => {
           if (readOnly) return
           const next = event.target.value
           setQuery(next)
-          onChange(next)
+          if (!open) onChange(next)
         }}
         onFocus={() => {
           onFocus?.()
           if (!readOnly && !disabled) {
             setOpen(true)
-            setQuery('')
+            setQuery(value)
           }
         }}
         onClick={() => {
           onFocus?.()
           if (!readOnly && !disabled) {
             setOpen(true)
-            setQuery('')
+            setQuery(value)
           }
         }}
         onBlur={handleBlur}

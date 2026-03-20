@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
@@ -9,6 +9,7 @@ import {
 } from '../api'
 import type { components } from '../api/schema'
 import CredentialSections from '../components/CredentialSections'
+import { useSiteInfo } from '../site/SiteInfoContext'
 
 type CUStatus = components['schemas']['CUStatus']
 type CUSessionToken = components['schemas']['CUSessionToken']
@@ -41,6 +42,7 @@ function readResetSession(): CUSessionToken | null {
 export default function ResetCredentials() {
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const { displayName, imageUrl } = useSiteInfo()
   const [searchParams, setSearchParams] = useSearchParams()
   const tokenParam = searchParams.get('token') ?? ''
 
@@ -51,7 +53,7 @@ export default function ResetCredentials() {
   const [status, setStatus] = useState<CUStatus | null>(null)
   const hasSession = Boolean(session && status)
 
-  const beginSessionFromToken = async (tokenValue: string) => {
+  const beginSessionFromToken = useCallback(async (tokenValue: string) => {
     setLoading(true)
     setMessage(null)
     try {
@@ -68,7 +70,7 @@ export default function ResetCredentials() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [setSearchParams, t, token])
 
   useEffect(() => {
     const resume = async () => {
@@ -95,7 +97,7 @@ export default function ResetCredentials() {
   useEffect(() => {
     if (!tokenParam || hasSession) return
     void beginSessionFromToken(tokenParam)
-  }, [tokenParam, hasSession])
+  }, [tokenParam, hasSession, beginSessionFromToken])
 
   const handleTokenSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -140,6 +142,11 @@ export default function ResetCredentials() {
   return (
     <section className="centered-page">
       <div className="centered-card">
+        {imageUrl && (
+          <div className="centered-brand-image-wrap">
+            <img src={imageUrl} alt={displayName} className="centered-brand-image" />
+          </div>
+        )}
         <h1>{t('reset.title')}</h1>
         <p className="page-note">{t('reset.subtitle')}</p>
 

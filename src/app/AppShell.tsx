@@ -1,38 +1,76 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { fetchGroups, fetchServiceAccounts } from '../api'
 import { useAuth } from '../auth/AuthContext'
 import { AccessProvider, useAccess } from '../auth/AccessContext'
-import { isHighPrivilege } from '../utils/groupAccess'
+import {
+  isAccountPolicyAdmin,
+  isAccessControlAdmin,
+  isDomainAdmin,
+  isGroupAdmin,
+  isHighPrivilege,
+  isMessageAdmin,
+  isMessageSender,
+  isServiceAccountAdmin,
+} from '../utils/groupAccess'
+import { useSiteInfo } from '../site/SiteInfoContext'
 
 function AppShellContent() {
   const { signOut, user } = useAuth()
   const { unlockedMinutes, memberOf } = useAccess()
+  const { displayName, imageUrl } = useSiteInfo()
   const { t } = useTranslation()
-  const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
 
+  const highPrivilege = isHighPrivilege(memberOf)
+  const canSeeSystem =
+    isDomainAdmin(memberOf) ||
+    isAccountPolicyAdmin(memberOf) ||
+    isMessageAdmin(memberOf) ||
+    isMessageSender(memberOf)
+  const canSeeGroupsByGroup = isGroupAdmin(memberOf) || isAccessControlAdmin(memberOf)
+  const canSeeServiceAccountsByGroup =
+    isServiceAccountAdmin(memberOf) || isAccessControlAdmin(memberOf)
+  const groupsProbe = useQuery({
+    queryKey: ['capability', 'groups-read'],
+    queryFn: fetchGroups,
+    enabled: !canSeeGroupsByGroup,
+    staleTime: 60_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
+  const serviceAccountsProbe = useQuery({
+    queryKey: ['capability', 'service-accounts-read'],
+    queryFn: fetchServiceAccounts,
+    enabled: !canSeeServiceAccountsByGroup,
+    staleTime: 60_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
+  const canSeeGroups = canSeeGroupsByGroup || groupsProbe.isSuccess
+  const canSeeServiceAccounts = canSeeServiceAccountsByGroup || serviceAccountsProbe.isSuccess
   const navItems = [
     { to: '/', label: t('shell.navApps') },
     { to: '/profile', label: t('shell.navProfile') },
     { to: '/admin/people', label: t('shell.navPeople') },
-    { to: '/admin/service-accounts', label: t('shell.navServiceAccounts') },
-    { to: '/admin/groups', label: t('shell.navGroups') },
+    ...(canSeeServiceAccounts
+      ? [{ to: '/admin/service-accounts', label: t('shell.navServiceAccounts') }]
+      : []),
+    ...(canSeeGroups ? [{ to: '/admin/groups', label: t('shell.navGroups') }] : []),
     { to: '/admin/oauth2', label: t('shell.navOauth2') },
-    { to: '/system', label: 'System' },
+    ...(canSeeSystem ? [{ to: '/system', label: t('shell.navSystem') }] : []),
   ]
-
-  const highPrivilege = isHighPrivilege(memberOf)
-
-  useEffect(() => {
-    setMenuOpen(false)
-  }, [location.pathname])
 
   return (
     <div className="app-shell">
       <aside className={menuOpen ? 'sidebar open' : 'sidebar'}>
         <div className="brand">
-          <div className="brand-title">Kanidm WebUI NG</div>
+          <div className="brand-title-wrap">
+            {imageUrl && <img src={imageUrl} alt={displayName} className="brand-logo" />}
+            <div className="brand-title">{displayName}</div>
+          </div>
           <div className="brand-subtitle">{t('shell.subtitle')}</div>
         </div>
         <nav className="nav">
@@ -41,6 +79,7 @@ function AppShellContent() {
               key={item.to}
               to={item.to}
               end={item.to === '/'}
+              onClick={() => setMenuOpen(false)}
               className={({ isActive }) =>
                 isActive ? 'nav-link active' : 'nav-link'
               }

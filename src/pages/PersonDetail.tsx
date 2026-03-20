@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import type { components } from '../api/schema'
 import {
   clearPersonAttr,
@@ -90,6 +91,14 @@ export default function PersonDetail() {
   const [posixGid, setPosixGid] = useState('')
   const [posixShell, setPosixShell] = useState('')
   const [copyTip, setCopyTip] = useState(false)
+  const personQuery = useQuery({
+    queryKey: ['person-detail', id],
+    queryFn: () => fetchPerson(id!),
+    enabled: Boolean(id),
+    staleTime: 30_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
 
   const isPeopleAdmin = useMemo(
     () => hasAnyGroup(memberOf, ['idm_people_admins']),
@@ -136,89 +145,103 @@ export default function PersonDetail() {
   }, [personMeta])
 
   useEffect(() => {
-    let active = true
     if (!id) {
       navigate('/admin/people', { replace: true })
+    }
+  }, [id, navigate])
+
+  useEffect(() => {
+    setLoading(personQuery.isPending)
+    if (personQuery.isError) {
+      setMessage(
+        personQuery.error instanceof Error ? personQuery.error.message : t('people.messages.loadFailed'),
+      )
       return
     }
-
-    const load = async () => {
-      setLoading(true)
-      setMessage(null)
-      setCredentialMessage(null)
-      setPosixMessage(null)
-      try {
-        const person = await fetchPerson(id)
-        if (!active) return
-        if (!person) {
-          setMessage(t('people.detail.notFound'))
-          setLoading(false)
-          return
-        }
-        if (person.uuid && person.uuid !== id) {
-          navigate(`/admin/people/${person.uuid}`, { replace: true })
-        }
-        setPersonMeta({
-          uuid: person.uuid,
-          memberOf: person.memberOf,
-          directMemberOf: person.directMemberOf,
-          passkeys: person.passkeys,
-          attestedPasskeys: person.attestedPasskeys,
-        })
-        const nextForm: PersonForm = {
-          name: person.name,
-          displayName: person.displayName,
-          legalName: person.legalName ?? '',
-          emails: person.emails,
-          validFrom: toLocalDateTime(person.accountValidFrom),
-          expiresAt: toLocalDateTime(person.accountExpire),
-        }
-        setForm(nextForm)
-        setInitialForm(nextForm)
-
-        try {
-          const status = await fetchCredentialStatus(person.uuid || id)
-          if (!active) return
-          setCredentialStatus(status)
-        } catch (error) {
-          if (!active) return
-          setCredentialMessage(
-            error instanceof Error
-              ? error.message
-              : t('people.messages.credentialStatusFailed'),
-          )
-        }
-
-        try {
-          const token = await fetchUnixToken(person.uuid || id)
-          if (!active) return
-          setPosixToken(token)
-          setPosixGid(String(token.gidnumber ?? ''))
-          setPosixShell(token.shell ?? '')
-        } catch (error) {
-          if (!active) return
-          if (isNotFound(error)) {
-            setPosixToken(null)
-          } else {
-            setPosixMessage(
-              error instanceof Error ? error.message : t('people.messages.posixLoadFailed'),
-            )
-          }
-        }
-      } catch (error) {
-        if (!active) return
-        setMessage(error instanceof Error ? error.message : t('people.messages.loadFailed'))
-      } finally {
-        if (!active) return
-        setLoading(false)
+    const person = personQuery.data
+    if (!person) {
+      if (!personQuery.isPending) {
+        setMessage(t('people.detail.notFound'))
       }
+      return
     }
+    setMessage(null)
+    if (id && person.uuid && person.uuid !== id) {
+      navigate(`/admin/people/${person.uuid}`, { replace: true })
+    }
+    setPersonMeta({
+      uuid: person.uuid,
+      memberOf: person.memberOf,
+      directMemberOf: person.directMemberOf,
+      passkeys: person.passkeys,
+      attestedPasskeys: person.attestedPasskeys,
+    })
+    const nextForm: PersonForm = {
+      name: person.name,
+      displayName: person.displayName,
+      legalName: person.legalName ?? '',
+      emails: person.emails,
+      validFrom: toLocalDateTime(person.accountValidFrom),
+      expiresAt: toLocalDateTime(person.accountExpire),
+    }
+    setForm(nextForm)
+    setInitialForm(nextForm)
+  }, [id, navigate, personQuery.data, personQuery.error, personQuery.isError, personQuery.isPending, t])
 
-    void load()
-    return () => {
-      active = false
+  const credentialQuery = useQuery({
+    queryKey: ['person-credential-status', personMeta?.uuid],
+    queryFn: () => fetchCredentialStatus(personMeta!.uuid),
+    enabled: Boolean(personMeta?.uuid),
+    staleTime: 30_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
+
+  useEffect(() => {
+    if (credentialQuery.isError) {
+      setCredentialMessage(
+        credentialQuery.error instanceof Error
+          ? credentialQuery.error.message
+          : t('people.messages.credentialStatusFailed'),
+      )
+      return
     }
-  }, [id, navigate, t])
+    if (credentialQuery.isSuccess) {
+      setCredentialStatus(credentialQuery.data)
+      setCredentialMessage(null)
+    }
+  }, [credentialQuery.data, credentialQuery.error, credentialQuery.isError, credentialQuery.isSuccess, t])
+
+  const posixQuery = useQuery({
+    queryKey: ['person-posix-token', personMeta?.uuid],
+    queryFn: () => fetchUnixToken(personMeta!.uuid),
+    enabled: Boolean(personMeta?.uuid),
+    staleTime: 30_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
+
+  useEffect(() => {
+    if (posixQuery.isError) {
+      if (isNotFound(posixQuery.error)) {
+        setPosixToken(null)
+        setPosixGid('')
+        setPosixShell('')
+        setPosixMessage(null)
+      } else {
+        setPosixMessage(
+          posixQuery.error instanceof Error ? posixQuery.error.message : t('people.messages.posixLoadFailed'),
+        )
+      }
+      return
+    }
+    if (posixQuery.isSuccess) {
+      setPosixToken(posixQuery.data)
+      setPosixGid(String(posixQuery.data.gidnumber ?? ''))
+      setPosixShell(posixQuery.data.shell ?? '')
+      setPosixMessage(null)
+    }
+  }, [posixQuery.data, posixQuery.error, posixQuery.isError, posixQuery.isSuccess, t])
 
   const requestReauthIfNeeded = (allowed: boolean) => {
     if (allowed && !canEdit) {

@@ -1,87 +1,77 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import { fetchOauth2ImageObjectUrl } from '../api/oauth2'
 import { fetchSelfAppLinks } from '../api/user'
 import type { UserAppLink } from '../api/user'
 
 export default function Apps() {
   const { t } = useTranslation()
-  const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState<string | null>(null)
-  const [apps, setApps] = useState<UserAppLink[]>([])
-  const [appImageUrls, setAppImageUrls] = useState<Record<string, string>>({})
-
-  useEffect(() => {
-    let cancelled = false
-    const run = async () => {
-      setLoading(true)
-      setMessage(null)
-      try {
-        const response = await fetchSelfAppLinks()
-        if (cancelled) return
-        setApps(response.sort((a, b) => a.displayName.localeCompare(b.displayName)))
-      } catch (error) {
-        if (!cancelled) {
-          setMessage(error instanceof Error ? error.message : t('apps.messages.loadFailed'))
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    void run()
-    return () => {
-      cancelled = true
-    }
-  }, [t])
-
-  useEffect(() => {
-    let active = true
-    let objectUrls: string[] = []
-
-    const loadImages = async () => {
-      const imageApps = apps.filter((app) => app.hasImage)
-      if (imageApps.length === 0) {
-        setAppImageUrls({})
-        return
-      }
-
+  const previousUrlsRef = useRef<Record<string, string>>({})
+  const appsQuery = useQuery({
+    queryKey: ['selfAppLinks'],
+    queryFn: fetchSelfAppLinks,
+    staleTime: 30_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
+  const apps: UserAppLink[] = useMemo(
+    () =>
+      appsQuery.data
+        ? [...appsQuery.data].sort((a, b) => a.displayName.localeCompare(b.displayName))
+        : [],
+    [appsQuery.data],
+  )
+  const loading = appsQuery.isPending
+  const message = appsQuery.isError
+    ? appsQuery.error instanceof Error
+      ? appsQuery.error.message
+      : t('apps.messages.loadFailed')
+    : null
+  const imageNames = useMemo(
+    () => apps.filter((app) => app.hasImage).map((app) => app.name).sort(),
+    [apps],
+  )
+  const imagesQuery = useQuery({
+    queryKey: ['apps-images', imageNames.join('|')],
+    queryFn: async () => {
+      if (imageNames.length === 0) return {} as Record<string, string>
       const entries = await Promise.all(
-        imageApps.map(async (app) => {
+        imageNames.map(async (name) => {
           try {
-            const url = await fetchOauth2ImageObjectUrl(app.name)
-            return [app.name, url] as const
+            const url = await fetchOauth2ImageObjectUrl(name)
+            return [name, url] as const
           } catch {
-            return [app.name, null] as const
+            return [name, null] as const
           }
         }),
       )
-
-      if (!active) {
-        entries.forEach(([, url]) => {
-          if (url) URL.revokeObjectURL(url)
-        })
-        return
-      }
-
       const next: Record<string, string> = {}
       for (const [name, url] of entries) {
-        if (url) {
-          next[name] = url
-          objectUrls.push(url)
-        }
+        if (url) next[name] = url
       }
-      setAppImageUrls(next)
+      return next
+    },
+    staleTime: 30_000,
+    gcTime: 120_000,
+  })
+  const appImageUrls = useMemo(() => imagesQuery.data ?? {}, [imagesQuery.data])
+
+  useEffect(() => {
+    const previous = previousUrlsRef.current
+    const next = appImageUrls
+    for (const [name, url] of Object.entries(previous)) {
+      if (next[name] !== url) URL.revokeObjectURL(url)
     }
+    previousUrlsRef.current = next
+  }, [appImageUrls])
 
-    void loadImages()
-
+  useEffect(() => {
     return () => {
-      active = false
-      objectUrls.forEach((url) => URL.revokeObjectURL(url))
-      objectUrls = []
+      Object.values(previousUrlsRef.current).forEach((url) => URL.revokeObjectURL(url))
+      previousUrlsRef.current = {}
     }
-  }, [apps])
+  }, [])
 
   return (
     <section className="page apps-page">

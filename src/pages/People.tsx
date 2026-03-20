@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import { fetchGroups, fetchPeople } from '../api'
 import type { PersonSummary } from '../api/people'
 import type { GroupSummary } from '../api/groups'
@@ -21,11 +22,6 @@ export default function People() {
   const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [hideUnrelated, setHideUnrelated] = useState(true)
-  const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState<string | null>(null)
-  const [people, setPeople] = useState<PersonSummary[]>([])
-  const pendingRef = useRef<Promise<PersonSummary[]> | null>(null)
-  const [groups, setGroups] = useState<GroupSummary[]>([])
 
   const canReadPii = useMemo(
     () => hasAnyGroup(memberOf, ['idm_people_admins', 'idm_people_pii_read']),
@@ -39,53 +35,33 @@ export default function People() {
   const canManageGroup = useMemo(() => {
     return (group: GroupSummary) => canManageGroupEntry(group.entryManagedBy, user, memberOf)
   }, [memberOf, user])
-
-  useEffect(() => {
-    let active = true
-    setLoading(true)
-    setMessage(null)
-    if (!pendingRef.current) {
-      pendingRef.current = fetchPeople()
-    }
-    pendingRef.current
-      .then((entries) => {
-        if (!active) return
-        setPeople(entries)
-      })
-      .catch((error) => {
-        if (!active) return
-        setMessage(error instanceof Error ? error.message : t('people.messages.listFailed'))
-      })
-      .finally(() => {
-        pendingRef.current = null
-        if (!active) return
-        setLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [t])
-
-  useEffect(() => {
-    if (isAdmin) {
-      setHideUnrelated(false)
-      return
-    }
-    setHideUnrelated(true)
-    let active = true
-    fetchGroups()
-      .then((entries) => {
-        if (!active) return
-        setGroups(entries.filter((group) => canManageGroup(group)))
-      })
-      .catch(() => {
-        if (!active) return
-        setGroups([])
-      })
-    return () => {
-      active = false
-    }
-  }, [canManageGroup, isAdmin])
+  const peopleQuery = useQuery({
+    queryKey: ['people-list'],
+    queryFn: fetchPeople,
+    staleTime: 30_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
+  const groupsQuery = useQuery({
+    queryKey: ['groups-list'],
+    queryFn: fetchGroups,
+    enabled: !isAdmin,
+    staleTime: 30_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
+  const people: PersonSummary[] = useMemo(() => peopleQuery.data ?? [], [peopleQuery.data])
+  const groups: GroupSummary[] = useMemo(
+    () => (groupsQuery.data ?? []).filter((group) => canManageGroup(group)),
+    [groupsQuery.data, canManageGroup],
+  )
+  const loading = peopleQuery.isPending || (!isAdmin && groupsQuery.isPending)
+  const message = peopleQuery.isError
+    ? peopleQuery.error instanceof Error
+      ? peopleQuery.error.message
+      : t('people.messages.listFailed')
+    : null
+  const effectiveHideUnrelated = isAdmin ? false : hideUnrelated
 
   const filteredPeople = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -99,13 +75,13 @@ export default function People() {
   }, [people, query])
 
   const visiblePeople = useMemo(() => {
-    if (isAdmin || !hideUnrelated) return filteredPeople
+    if (isAdmin || !effectiveHideUnrelated) return filteredPeople
     const manageableGroups = new Set(groups.map((group) => normalizeGroupName(group.name)))
     if (manageableGroups.size === 0) return []
     return filteredPeople.filter((person) =>
       person.memberOf.some((group) => manageableGroups.has(normalizeGroupName(group))),
     )
-  }, [filteredPeople, groups, hideUnrelated, isAdmin])
+  }, [effectiveHideUnrelated, filteredPeople, groups, isAdmin])
 
   return (
     <section className="page people-page">
@@ -144,7 +120,7 @@ export default function People() {
           <label className="checkbox">
             <input
               type="checkbox"
-              checked={hideUnrelated}
+              checked={effectiveHideUnrelated}
               onChange={(event) => setHideUnrelated(event.target.checked)}
             />
             <span>{t('people.onlyMyGroups')}</span>

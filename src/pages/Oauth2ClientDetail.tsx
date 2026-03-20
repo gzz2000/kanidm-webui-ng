@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import AccountGroupSelect from '../components/AccountGroupSelect'
+import ImageEditor from '../components/ImageEditor'
 import {
   addOauth2Redirect,
   clearOauth2Attr,
@@ -76,8 +78,6 @@ export default function Oauth2ClientDetail() {
   const { canEdit, requestReauth, memberOf } = useAccess()
   const isAdmin = isOauth2Admin(memberOf)
   const [client, setClient] = useState<Oauth2ClientDetail | null>(null)
-  const [groups, setGroups] = useState<GroupSummary[]>([])
-  const [loading, setLoading] = useState(true)
   const [pageMessage, setPageMessage] = useState<string | null>(null)
 
   const [name, setName] = useState('')
@@ -116,37 +116,12 @@ export default function Oauth2ClientDetail() {
   const [secret, setSecret] = useState<string | null>(null)
   const [secretLoading, setSecretLoading] = useState(false)
   const [imageVersion, setImageVersion] = useState(0)
-  const [imageError, setImageError] = useState(false)
   const [imageSrc, setImageSrc] = useState<string | null>(null)
-  const imageFileInputRef = useRef<HTMLInputElement | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [scopeConfirmGroup, setScopeConfirmGroup] = useState<string | null>(null)
   const [supScopeConfirmGroup, setSupScopeConfirmGroup] = useState<string | null>(null)
   const [claimConfirmKey, setClaimConfirmKey] = useState<string | null>(null)
   const [redirectConfirmUrl, setRedirectConfirmUrl] = useState<string | null>(null)
-
-  const groupLookup = useMemo(() => {
-    const map = new Map<string, GroupSummary>()
-    for (const group of groups) {
-      map.set(group.uuid, group)
-      map.set(group.name.toLowerCase(), group)
-    }
-    return map
-  }, [groups])
-
-  const resolveGroupLabel = useCallback(
-    (groupId: string) => {
-      const group = groupLookup.get(groupId) ?? groupLookup.get(groupId.toLowerCase())
-      if (!group) return stripDomain(groupId)
-      const shortName = stripDomain(group.name)
-      const shortDisplay = stripDomain(group.displayName)
-      if (!shortDisplay || shortDisplay === shortName) {
-        return shortName
-      }
-      return `${group.displayName} (${shortName})`
-    },
-    [groupLookup],
-  )
 
   const claimGroups = useMemo<ClaimGroup[]>(() => {
     if (!client) return []
@@ -217,71 +192,90 @@ export default function Oauth2ClientDetail() {
     [],
   )
 
-  const loadClient = useCallback(async () => {
-    if (!id) return
-    setLoading(true)
-    setPageMessage(null)
-    try {
-      const entry = await fetchOauth2Client(id)
-      if (!entry) {
-        setPageMessage(t('oauth2.detail.notFound'))
-        setClient(null)
-        return
+  const clientQuery = useQuery({
+    queryKey: ['oauth2-client-detail', id],
+    queryFn: async () => {
+      if (!id) return null
+      return fetchOauth2Client(id)
+    },
+    enabled: Boolean(id),
+  })
+
+  const groupsQuery = useQuery({
+    queryKey: ['groups', 'for-oauth2-client-detail'],
+    queryFn: fetchGroups,
+  })
+  const groups: GroupSummary[] = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data])
+
+  const groupLookup = useMemo(() => {
+    const map = new Map<string, GroupSummary>()
+    for (const group of groups) {
+      map.set(group.uuid, group)
+      map.set(group.name.toLowerCase(), group)
+    }
+    return map
+  }, [groups])
+
+  const resolveGroupLabel = useCallback(
+    (groupId: string) => {
+      const group = groupLookup.get(groupId) ?? groupLookup.get(groupId.toLowerCase())
+      if (!group) return stripDomain(groupId)
+      const shortName = stripDomain(group.name)
+      const shortDisplay = stripDomain(group.displayName)
+      if (!shortDisplay || shortDisplay === shortName) {
+        return shortName
       }
-      applyClient(entry, { syncIdentity: true, syncLanding: true, syncSecurity: true })
-      setImageError(false)
-    } catch (error) {
-      setPageMessage(error instanceof Error ? error.message : t('oauth2.messages.loadFailed'))
+      return `${group.displayName} (${shortName})`
+    },
+    [groupLookup],
+  )
+
+  const imageQuery = useQuery({
+    queryKey: ['oauth2-client-image', client?.name, imageVersion],
+    queryFn: async () => {
+      if (!client) return null
+      return fetchOauth2ImageObjectUrl(client.name)
+    },
+    enabled: Boolean(client),
+  })
+
+  useEffect(() => {
+    if (clientQuery.isLoading) return
+    if (clientQuery.error) {
+      setPageMessage(clientQuery.error instanceof Error ? clientQuery.error.message : t('oauth2.messages.loadFailed'))
       setClient(null)
-    } finally {
-      setLoading(false)
+      return
     }
-  }, [applyClient, id])
+    const entry = clientQuery.data
+    if (!entry) {
+      setPageMessage(t('oauth2.detail.notFound'))
+      setClient(null)
+      return
+    }
+    setPageMessage(null)
+    applyClient(entry, { syncIdentity: true, syncLanding: true, syncSecurity: true })
+  }, [applyClient, clientQuery.data, clientQuery.error, clientQuery.isLoading, t])
 
   useEffect(() => {
-    void loadClient()
-  }, [loadClient])
+    if (imageQuery.error) {
+      setImageSrc((current) => {
+        if (current) URL.revokeObjectURL(current)
+        return null
+      })
+      return
+    }
+    setImageSrc((current) => {
+      const next = imageQuery.data ?? null
+      if (current && current !== next) URL.revokeObjectURL(current)
+      return next
+    })
+  }, [imageQuery.data, imageQuery.error])
 
   useEffect(() => {
-    let active = true
-    fetchGroups()
-      .then((entries) => {
-        if (!active) return
-        setGroups(entries)
-      })
-      .catch(() => {
-        if (!active) return
-        setGroups([])
-      })
     return () => {
-      active = false
+      if (imageSrc) URL.revokeObjectURL(imageSrc)
     }
-  }, [])
-
-  useEffect(() => {
-    if (!client) return
-    let active = true
-    let objectUrl: string | null = null
-    void fetchOauth2ImageObjectUrl(client.name)
-      .then((url) => {
-        if (!active) {
-          if (url) URL.revokeObjectURL(url)
-          return
-        }
-        objectUrl = url
-        setImageSrc(url)
-        setImageError(!url)
-      })
-      .catch(() => {
-        if (!active) return
-        setImageSrc(null)
-        setImageError(true)
-      })
-    return () => {
-      active = false
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
-  }, [client, imageVersion])
+  }, [imageSrc])
 
   const requestReauthIfNeeded = () => {
     if (!canEdit && isAdmin) {
@@ -645,7 +639,6 @@ export default function Oauth2ClientDetail() {
     try {
       await uploadOauth2Image(client.name, file)
       setImageVersion((prev) => prev + 1)
-      setImageError(false)
       setImageMessage(t('oauth2.messages.imageUpdated'))
     } catch (error) {
       setImageMessage(error instanceof Error ? error.message : t('oauth2.messages.imageUpdateFailed'))
@@ -659,19 +652,10 @@ export default function Oauth2ClientDetail() {
     try {
       await deleteOauth2Image(client.name)
       setImageVersion((prev) => prev + 1)
-      setImageError(true)
       setImageMessage(t('oauth2.messages.imageRemoved'))
     } catch (error) {
       setImageMessage(error instanceof Error ? error.message : t('oauth2.messages.imageRemoveFailed'))
     }
-  }
-
-  const handleImagePickerOpen = () => {
-    if (!client || !isAdmin) return
-    if (requestReauthIfNeeded()) {
-      return
-    }
-    imageFileInputRef.current?.click()
   }
 
   const handleDeleteClient = async () => {
@@ -686,7 +670,7 @@ export default function Oauth2ClientDetail() {
     }
   }
 
-  if (loading) {
+  if (clientQuery.isLoading) {
     return (
       <section className="page oauth2-page">
         <h1>{t('oauth2.detail.title')}</h1>
@@ -1424,55 +1408,22 @@ export default function Oauth2ClientDetail() {
             <h2>{t('oauth2.detail.imageTitle')}</h2>
             <p>{t('oauth2.detail.imageDesc')}</p>
           </header>
-          <div className="oauth2-image">
-            {!imageError && imageSrc && (
-              <img
-                src={imageSrc}
-                alt=""
-                onError={() => setImageError(true)}
-              />
-            )}
-            {imageError && <span className="muted-text">{t('oauth2.detail.imageEmpty')}</span>}
-            {isAdmin && !imageError && imageSrc && (
-              <div className="panel-actions">
-                <button
-                  className="ghost-button"
-                  type="button"
-                  onClick={() => void handleImageDelete()}
-                >
-                  {t('oauth2.actions.removeImage')}
-                </button>
-              </div>
-            )}
-          </div>
+          <ImageEditor
+            imageSrc={imageSrc}
+            emptyText={t('oauth2.detail.imageEmpty')}
+            canEdit={isAdmin}
+            chooseLabel={t('oauth2.actions.chooseImage')}
+            replaceLabel={t('oauth2.actions.uploadImage')}
+            removeLabel={t('oauth2.actions.removeImage')}
+            onBeforeEdit={requestReauthIfNeeded}
+            onSelectImage={(file) => {
+              void handleImageUpload(file)
+            }}
+            onRemoveImage={() => {
+              void handleImageDelete()
+            }}
+          />
           {imageMessage && <p className="inline-feedback">{imageMessage}</p>}
-          {isAdmin && (
-            <>
-              <div className="field">
-                <span>{t('oauth2.detail.uploadImage')}</span>
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={handleImagePickerOpen}
-                >
-                  {t('oauth2.actions.chooseImage')}
-                </button>
-                <input
-                  ref={imageFileInputRef}
-                  className="visually-hidden"
-                  type="file"
-                  accept="image/*"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0]
-                    if (file) {
-                      void handleImageUpload(file)
-                    }
-                    event.target.value = ''
-                  }}
-                />
-              </div>
-            </>
-          )}
         </div>
 
         {isAdmin && (

@@ -11,6 +11,7 @@ import {
 import { performPasskeyRequest } from '../auth/webauthn'
 import { useAuth } from '../auth/AuthContext'
 import { loadOauth2PendingRequest } from '../auth/oauth2FlowState'
+import { useSiteInfo } from '../site/SiteInfoContext'
 import type { AuthAllowed, AuthMech, AuthResponse } from '../api/types'
 
 function findAllowed(
@@ -35,6 +36,7 @@ function authSucceeded(response: AuthResponse) {
 export default function Login() {
   const navigate = useNavigate()
   const { setAuthenticated } = useAuth()
+  const { displayName, imageUrl } = useSiteInfo()
   const { t } = useTranslation()
   const [step, setStep] = useState<'username' | 'select' | 'password' | 'totp' | 'passkey'>(
     'username',
@@ -254,7 +256,12 @@ export default function Login() {
       <div className="login-card">
         <div className="login-header">
           <div>
-            <h1>{t('login.title')}</h1>
+            {imageUrl && (
+              <div className="centered-brand-image-wrap">
+                <img src={imageUrl} alt={displayName} className="centered-brand-image" />
+              </div>
+            )}
+            <h1>{t('login.titleWithDomain', { domain: displayName })}</h1>
             <p className="page-note">{t('login.subtitle')}</p>
           </div>
         </div>

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import { fetchGroups } from '../api'
 import type { GroupSummary } from '../api/groups'
 import { useAccess } from '../auth/AccessContext'
@@ -19,42 +20,26 @@ export default function Groups() {
   const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [hideUnmanaged, setHideUnmanaged] = useState(true)
-  const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState<string | null>(null)
-  const [groups, setGroups] = useState<GroupSummary[]>([])
-  const pendingRef = useRef<Promise<GroupSummary[]> | null>(null)
+  const groupsQuery = useQuery({
+    queryKey: ['groups-list'],
+    queryFn: fetchGroups,
+    staleTime: 30_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
+  const groups: GroupSummary[] = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data])
+  const loading = groupsQuery.isPending
+  const message = groupsQuery.isError
+    ? groupsQuery.error instanceof Error
+      ? groupsQuery.error.message
+      : t('groups.messages.listFailed')
+    : null
 
   const canCreate = useMemo(() => isGroupAdmin(memberOf), [memberOf])
   const isAccessAdmin = useMemo(() => isAccessControlAdmin(memberOf), [memberOf])
   const canManageGroup = useMemo(() => {
     return (group: GroupSummary) => canManageGroupEntry(group.entryManagedBy, user, memberOf)
   }, [memberOf, user])
-
-  useEffect(() => {
-    let active = true
-    setLoading(true)
-    setMessage(null)
-    if (!pendingRef.current) {
-      pendingRef.current = fetchGroups()
-    }
-    pendingRef.current
-      .then((entries) => {
-        if (!active) return
-        setGroups(entries)
-      })
-      .catch((error) => {
-        if (!active) return
-        setMessage(error instanceof Error ? error.message : t('groups.messages.listFailed'))
-      })
-      .finally(() => {
-        pendingRef.current = null
-        if (!active) return
-        setLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [t])
 
   const filteredGroups = useMemo(() => {
     const needle = query.trim().toLowerCase()

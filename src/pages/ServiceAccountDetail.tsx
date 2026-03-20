@@ -1,7 +1,8 @@
 import type { FormEvent } from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import {
   addServiceAccountSshKey,
   clearServiceAccountAttr,
@@ -80,7 +81,6 @@ export default function ServiceAccountDetail() {
   const { t } = useTranslation()
   const { canEdit, memberOf, requestReauth } = useAccess()
   const { user } = useAuth()
-  const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
   const [identityMessage, setIdentityMessage] = useState<string | null>(null)
   const [validityMessage, setValidityMessage] = useState<string | null>(null)
@@ -114,7 +114,6 @@ export default function ServiceAccountDetail() {
   const [posixLoading, setPosixLoading] = useState(false)
   const [posixGid, setPosixGid] = useState('')
   const [posixShell, setPosixShell] = useState('')
-  const loadRef = useRef<string | null>(null)
 
   const isServiceAdmin = useMemo(() => isServiceAccountAdmin(memberOf), [memberOf])
   const isAccessAdmin = useMemo(() => isAccessControlAdmin(memberOf), [memberOf])
@@ -177,90 +176,142 @@ export default function ServiceAccountDetail() {
     })
   }
 
-  const loadCredentialStatus = async (accountId: string) => {
-    try {
-      const status = await fetchServiceAccountCredentialStatus(accountId)
-      setCredentialStatus(status)
-    } catch (error) {
-      setCredentialMessage(
-        error instanceof Error ? error.message : t('serviceAccounts.messages.credentialStatusFailed'),
-      )
-    }
-  }
+  const accountQuery = useQuery({
+    queryKey: ['service-account-detail', id],
+    queryFn: async () => {
+      if (!id) return null
+      return fetchServiceAccount(id)
+    },
+    enabled: Boolean(id),
+  })
 
-  const loadApiTokens = async (accountId: string) => {
-    try {
-      const tokens = await fetchServiceAccountApiTokens(accountId)
-      setApiTokens(tokens)
-    } catch (error) {
-      setApiTokenMessage(
-        error instanceof Error ? error.message : t('serviceAccounts.messages.apiTokenLoadFailed'),
-      )
-    }
-  }
+  const accountUuid = accountQuery.data?.uuid ?? null
+  const isBuiltinAccount = accountQuery.data?.name === 'admin' || accountQuery.data?.name === 'idm_admin'
 
-  const loadSshKeys = async (accountId: string) => {
-    try {
-      const keys = await fetchServiceAccountSshKeys(accountId)
-      setSshKeys(keys)
-    } catch (error) {
-      setSshMessage(error instanceof Error ? error.message : t('profile.ssh.messageLoadFailed'))
-    }
-  }
+  const credentialQuery = useQuery({
+    queryKey: ['service-account-credential-status', accountUuid],
+    queryFn: async () => {
+      if (!accountUuid || isBuiltinAccount) return null
+      return fetchServiceAccountCredentialStatus(accountUuid)
+    },
+    enabled: Boolean(accountUuid) && !isBuiltinAccount,
+  })
 
-  const loadPosix = async (accountId: string) => {
-    try {
-      const token = await fetchServiceAccountUnixToken(accountId)
-      setPosixToken(token)
-      setPosixGid(token.gidnumber ? String(token.gidnumber) : '')
-      setPosixShell(token.shell ?? '')
-    } catch (error) {
-      if (isNotFound(error)) {
-        setPosixToken(null)
-        setPosixGid('')
-        setPosixShell('')
-      } else {
-        setPosixMessage(error instanceof Error ? error.message : t('serviceAccounts.messages.posixLoadFailed'))
+  const apiTokensQuery = useQuery({
+    queryKey: ['service-account-api-tokens', accountUuid],
+    queryFn: async () => {
+      if (!accountUuid) return []
+      return fetchServiceAccountApiTokens(accountUuid)
+    },
+    enabled: Boolean(accountUuid),
+  })
+
+  const sshQuery = useQuery({
+    queryKey: ['service-account-ssh-keys', accountUuid],
+    queryFn: async () => {
+      if (!accountUuid) return []
+      return fetchServiceAccountSshKeys(accountUuid)
+    },
+    enabled: Boolean(accountUuid),
+  })
+
+  const posixQuery = useQuery({
+    queryKey: ['service-account-posix', accountUuid],
+    queryFn: async () => {
+      if (!accountUuid) return null
+      try {
+        return await fetchServiceAccountUnixToken(accountUuid)
+      } catch (error) {
+        if (isNotFound(error)) return null
+        throw error
       }
-    }
-  }
+    },
+    enabled: Boolean(accountUuid),
+  })
 
   useEffect(() => {
-    if (!id || loadRef.current === id) return
-    loadRef.current = id
-    setLoading(true)
-    setMessage(null)
-
-    const load = async () => {
-      try {
-        const account = await fetchServiceAccount(id)
-        if (!account) {
-          setMessage(t('serviceAccounts.detail.notFound'))
-          return
-        }
-        const isBuiltin = account.name === 'admin' || account.name === 'idm_admin'
-        setFormState(account)
-        if (id !== account.uuid) {
-          navigate(`/admin/service-accounts/${account.uuid}`, { replace: true })
-        }
-        if (isBuiltin) {
-          setCredentialStatus(null)
-        }
-        await Promise.all([
-          isBuiltin ? Promise.resolve() : loadCredentialStatus(account.uuid),
-          loadApiTokens(account.uuid),
-          loadSshKeys(account.uuid),
-          loadPosix(account.uuid),
-        ])
-      } catch (error) {
-        setMessage(error instanceof Error ? error.message : t('serviceAccounts.messages.loadFailed'))
-      } finally {
-        setLoading(false)
-      }
+    if (!id) return
+    if (accountQuery.isLoading) return
+    if (accountQuery.error) {
+      setMessage(
+        accountQuery.error instanceof Error
+          ? accountQuery.error.message
+          : t('serviceAccounts.messages.loadFailed'),
+      )
+      return
     }
+    const account = accountQuery.data
+    if (!account) {
+      setMessage(t('serviceAccounts.detail.notFound'))
+      return
+    }
+    setMessage(null)
+    setFormState(account)
+    if (id !== account.uuid) {
+      navigate(`/admin/service-accounts/${account.uuid}`, { replace: true })
+    }
+  }, [accountQuery.data, accountQuery.error, accountQuery.isLoading, id, navigate, t])
 
-    void load()
-  }, [id, navigate])
+  useEffect(() => {
+    if (isBuiltinAccount) {
+      setCredentialStatus(null)
+      setCredentialMessage(null)
+      return
+    }
+    if (!accountUuid) return
+    if (credentialQuery.error) {
+      setCredentialMessage(
+        credentialQuery.error instanceof Error
+          ? credentialQuery.error.message
+          : t('serviceAccounts.messages.credentialStatusFailed'),
+      )
+      return
+    }
+    if (credentialQuery.data) {
+      setCredentialStatus(credentialQuery.data)
+      setCredentialMessage(null)
+    }
+  }, [accountUuid, credentialQuery.data, credentialQuery.error, isBuiltinAccount, t])
+
+  useEffect(() => {
+    if (!accountUuid) return
+    if (apiTokensQuery.error) {
+      setApiTokenMessage(
+        apiTokensQuery.error instanceof Error
+          ? apiTokensQuery.error.message
+          : t('serviceAccounts.messages.apiTokenLoadFailed'),
+      )
+      return
+    }
+    setApiTokenMessage(null)
+    setApiTokens(apiTokensQuery.data ?? [])
+  }, [accountUuid, apiTokensQuery.data, apiTokensQuery.error, t])
+
+  useEffect(() => {
+    if (!accountUuid) return
+    if (sshQuery.error) {
+      setSshMessage(sshQuery.error instanceof Error ? sshQuery.error.message : t('profile.ssh.messageLoadFailed'))
+      return
+    }
+    setSshMessage(null)
+    setSshKeys(sshQuery.data ?? [])
+  }, [accountUuid, sshQuery.data, sshQuery.error, t])
+
+  useEffect(() => {
+    if (!accountUuid) return
+    if (posixQuery.error) {
+      setPosixMessage(
+        posixQuery.error instanceof Error
+          ? posixQuery.error.message
+          : t('serviceAccounts.messages.posixLoadFailed'),
+      )
+      return
+    }
+    setPosixMessage(null)
+    setPosixToken(posixQuery.data ?? null)
+    setPosixGid(posixQuery.data?.gidnumber ? String(posixQuery.data.gidnumber) : '')
+    setPosixShell(posixQuery.data?.shell ?? '')
+  }, [accountUuid, posixQuery.data, posixQuery.error, t])
 
   const handleIdentitySubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -405,7 +456,7 @@ export default function ServiceAccountDetail() {
     try {
       const password = await generateServiceAccountPassword(accountMeta.uuid)
       setGeneratedPassword(password)
-      void loadCredentialStatus(accountMeta.uuid)
+      await credentialQuery.refetch()
     } catch (error) {
       setCredentialMessage(error instanceof Error ? error.message : t('serviceAccounts.messages.passwordGenerateFailed'))
     }
@@ -453,7 +504,7 @@ export default function ServiceAccountDetail() {
       setCreatedToken(token)
       setApiTokenLabel('')
       setApiTokenExpiry('')
-      await loadApiTokens(accountMeta.uuid)
+      await apiTokensQuery.refetch()
     } catch (error) {
       setApiTokenMessage(error instanceof Error ? error.message : t('serviceAccounts.messages.apiTokenGenerateFailed'))
     } finally {
@@ -482,7 +533,7 @@ export default function ServiceAccountDetail() {
     setApiTokenMessage(null)
     try {
       await deleteServiceAccountApiToken(accountMeta.uuid, tokenId)
-      await loadApiTokens(accountMeta.uuid)
+      await apiTokensQuery.refetch()
     } catch (error) {
       setApiTokenMessage(error instanceof Error ? error.message : t('serviceAccounts.messages.apiTokenRemoveFailed'))
     } finally {
@@ -518,7 +569,7 @@ export default function ServiceAccountDetail() {
       await addServiceAccountSshKey(accountMeta.uuid, label, keyValue)
       setSshLabel('')
       setSshKey('')
-      await loadSshKeys(accountMeta.uuid)
+      await sshQuery.refetch()
     } catch (error) {
       setSshMessage(error instanceof Error ? error.message : t('profile.ssh.messageAddFailed'))
     } finally {
@@ -540,7 +591,7 @@ export default function ServiceAccountDetail() {
     setSshMessage(null)
     try {
       await deleteServiceAccountSshKey(accountMeta.uuid, tag)
-      await loadSshKeys(accountMeta.uuid)
+      await sshQuery.refetch()
     } catch (error) {
       setSshMessage(error instanceof Error ? error.message : t('profile.ssh.messageDeleteFailed'))
     } finally {
@@ -573,7 +624,7 @@ export default function ServiceAccountDetail() {
         gidnumber: gidNumber,
         shell: posixShell.trim() || undefined,
       })
-      await loadPosix(accountMeta.uuid)
+      await posixQuery.refetch()
       setPosixMessage(t('serviceAccounts.messages.posixUpdated'))
     } catch (error) {
       setPosixMessage(error instanceof Error ? error.message : t('serviceAccounts.messages.posixFailed'))
@@ -589,7 +640,7 @@ export default function ServiceAccountDetail() {
     return accountMeta.memberOf.filter((group) => !direct.has(group))
   }, [accountMeta])
 
-  if (loading) {
+  if (accountQuery.isLoading) {
     return (
       <section className="page service-account-page">
         <h1>{t('serviceAccounts.title')}</h1>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { oauth2AuthorisePermit, oauth2AuthoriseReject } from '../api/oauth2Flow'
 import { useAuth } from '../auth/AuthContext'
+import { useSiteInfo } from '../site/SiteInfoContext'
 import {
   clearOauth2ConsentState,
   clearOauth2PendingRequest,
@@ -13,6 +14,7 @@ import {
 export default function Oauth2Consent() {
   const { t } = useTranslation()
   const { user, signOut } = useAuth()
+  const { displayName, imageUrl } = useSiteInfo()
   const navigate = useNavigate()
   const consent = loadOauth2ConsentState()
   const [loading, setLoading] = useState(false)
@@ -112,7 +114,17 @@ export default function Oauth2Consent() {
       <div className="centered-card">
         <div className="oauth2-header">
           <div>
-            <h1>{t('oauth2Flow.consent.title')}</h1>
+            {imageUrl && (
+              <div className="centered-brand-image-wrap">
+                <img src={imageUrl} alt={displayName} className="centered-brand-image" />
+              </div>
+            )}
+            <h1>
+              {t('oauth2Flow.consent.titleWithClientAndDomain', {
+                client: consent.clientName,
+                domain: displayName,
+              })}
+            </h1>
             {signedInBlock}
             <p className="page-note">{t('oauth2Flow.consent.subtitle', { client: consent.clientName })}</p>
           </div>

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import {
   beginCredentialUpdate,
   cancelCredentialUpdate,
@@ -77,7 +78,6 @@ export default function Profile() {
   const [credLoading, setCredLoading] = useState(false)
   const [credSummary, setCredSummary] = useState<CredentialStatus | null>(null)
   const [credSummaryMessage, setCredSummaryMessage] = useState<string | null>(null)
-  const loadRef = useRef(false)
   const [passkeyLabels, setPasskeyLabels] = useState<string[]>([])
 
   const { canEdit, permissions, requestReauth } = useAccess()
@@ -96,67 +96,105 @@ export default function Profile() {
   const [sshDeletingLabel, setSshDeletingLabel] = useState<string | null>(null)
   const [sshConfirmLabel, setSshConfirmLabel] = useState<string | null>(null)
 
+  const profileQuery = useQuery({
+    queryKey: ['profile-self'],
+    queryFn: fetchSelfProfile,
+    initialData: user ?? undefined,
+    staleTime: 30_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
+  const credSummaryQuery = useQuery({
+    queryKey: ['profile-credential-summary', profileId],
+    queryFn: () => fetchCredentialStatus(profileId),
+    enabled: profileId.length > 0,
+    staleTime: 30_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
+  const radiusQuery = useQuery({
+    queryKey: ['profile-radius', profileId],
+    queryFn: () => fetchRadiusSecret(profileId),
+    enabled: profileId.length > 0,
+    staleTime: 30_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
+  const sshQuery = useQuery({
+    queryKey: ['profile-ssh', profileId],
+    queryFn: () => fetchSshPublicKeys(profileId),
+    enabled: profileId.length > 0,
+    staleTime: 30_000,
+    gcTime: 300_000,
+    retry: 0,
+  })
+
   useEffect(() => {
-    if (loadRef.current) return
-    loadRef.current = true
-
-    const load = async () => {
-      setLoading(true)
-      setProfileMessage(null)
-      try {
-        const nextProfile = user ? user : await fetchSelfProfile()
-        setProfile({
-          name: nextProfile.name,
-          displayName: nextProfile.displayName,
-          emails: nextProfile.emails,
-        })
-        setProfileId(nextProfile.uuid)
-        setInitialEmails(nextProfile.emails)
-        setInitialName(nextProfile.name)
-        setInitialDisplayName(nextProfile.displayName)
-        setPasskeyLabels([...nextProfile.passkeys, ...nextProfile.attestedPasskeys])
-
-        try {
-          const summary = await fetchCredentialStatus(nextProfile.uuid)
-          setCredSummary(summary)
-          setCredSummaryMessage(null)
-        } catch (error) {
-          setCredSummaryMessage(
-            error instanceof Error ? error.message : t('profile.messageCredentialSummaryFailed'),
-          )
-        }
-        try {
-          const radius = await fetchRadiusSecret(nextProfile.uuid)
-          setRadiusSecret(radius)
-        } catch (error) {
-          setRadiusMessage(
-            error instanceof Error ? error.message : t('profile.messageRadiusLoadFailed'),
-          )
-        }
-
-        try {
-          const keys = await fetchSshPublicKeys(nextProfile.uuid)
-          setSshKeys(keys)
-          setSshMessage(null)
-        } catch (error) {
-          setSshMessage(
-            error instanceof Error ? error.message : t('profile.ssh.messageLoadFailed'),
-          )
-        } finally {
-          setSshLoading(false)
-        }
-      } catch (error) {
-        setProfileMessage(
-          error instanceof Error ? error.message : t('profile.messageLoadProfileFailed'),
-        )
-      } finally {
-        setLoading(false)
-        setSshLoading(false)
-      }
+    setLoading(profileQuery.isPending)
+    if (profileQuery.isError) {
+      setProfileMessage(
+        profileQuery.error instanceof Error
+          ? profileQuery.error.message
+          : t('profile.messageLoadProfileFailed'),
+      )
+      return
     }
+    if (!profileQuery.data) return
+    const nextProfile = profileQuery.data
+    setProfileMessage(null)
+    setProfile({
+      name: nextProfile.name,
+      displayName: nextProfile.displayName,
+      emails: nextProfile.emails,
+    })
+    setProfileId(nextProfile.uuid)
+    setInitialEmails(nextProfile.emails)
+    setInitialName(nextProfile.name)
+    setInitialDisplayName(nextProfile.displayName)
+    setPasskeyLabels([...nextProfile.passkeys, ...nextProfile.attestedPasskeys])
+  }, [profileQuery.data, profileQuery.error, profileQuery.isError, profileQuery.isPending, t])
 
-    void load()
-  }, [])
+  useEffect(() => {
+    setSshLoading(sshQuery.isPending)
+    if (sshQuery.isError) {
+      setSshMessage(
+        sshQuery.error instanceof Error ? sshQuery.error.message : t('profile.ssh.messageLoadFailed'),
+      )
+      return
+    }
+    if (sshQuery.isSuccess) {
+      setSshKeys(sshQuery.data)
+      setSshMessage(null)
+    }
+  }, [sshQuery.data, sshQuery.error, sshQuery.isError, sshQuery.isPending, sshQuery.isSuccess, t])
+
+  useEffect(() => {
+    if (credSummaryQuery.isError) {
+      setCredSummaryMessage(
+        credSummaryQuery.error instanceof Error
+          ? credSummaryQuery.error.message
+          : t('profile.messageCredentialSummaryFailed'),
+      )
+      return
+    }
+    if (credSummaryQuery.isSuccess) {
+      setCredSummary(credSummaryQuery.data)
+      setCredSummaryMessage(null)
+    }
+  }, [credSummaryQuery.data, credSummaryQuery.error, credSummaryQuery.isError, credSummaryQuery.isSuccess, t])
+
+  useEffect(() => {
+    if (radiusQuery.isError) {
+      setRadiusMessage(
+        radiusQuery.error instanceof Error ? radiusQuery.error.message : t('profile.messageRadiusLoadFailed'),
+      )
+      return
+    }
+    if (radiusQuery.isSuccess) {
+      setRadiusSecret(radiusQuery.data)
+      setRadiusMessage(null)
+    }
+  }, [radiusQuery.data, radiusQuery.error, radiusQuery.isError, radiusQuery.isSuccess, t])
 
   const handleProfileChange = (field: keyof ProfileForm, value: string) => {
     if (!profile) return
