@@ -22,7 +22,7 @@ type Props = {
   onLoadingChange: (loading: boolean) => void
   onStatusChange: (status: CUStatus) => void
   onMessage: (message: string | null) => void
-  context: 'profile' | 'centered-page'
+  context: 'profile' | 'reset'
   leadMessage?: string
   warningsTitle: string
   tipMessage: string
@@ -94,7 +94,7 @@ export default function CredentialSections({
   cannotSaveMessage,
 }: Props) {
   const { t } = useTranslation()
-  const messagePrefix = context === 'centered-page' ? 'centered-page' : 'profile'
+  const messagePrefix = context === 'reset' ? 'reset' : 'profile'
   const msg = (key: string, args?: Record<string, unknown>) =>
     t(`${messagePrefix}.${key}`, args)
   const [password, setPassword] = useState('')

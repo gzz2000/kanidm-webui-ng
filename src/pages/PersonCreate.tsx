@@ -168,13 +168,13 @@ export default function PersonCreate() {
               {resetToken ? (
                 <div className="token-summary">
                   <div className="copy-row">
-                    <code>{`${window.location.origin}/centered-page?token=${resetToken.token}`}</code>
+                    <code>{`${window.location.origin}/reset?token=${resetToken.token}`}</code>
                     <button
                       className="secondary-button"
                       type="button"
                       onClick={() => {
                         void navigator.clipboard.writeText(
-                          `${window.location.origin}/centered-page?token=${resetToken.token}`,
+                          `${window.location.origin}/reset?token=${resetToken.token}`,
                         )
                         setResetCopyTip(true)
                         window.setTimeout(() => setResetCopyTip(false), 1600)

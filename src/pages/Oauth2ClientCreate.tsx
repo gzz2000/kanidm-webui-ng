@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { createOauth2Client } from '../api'
+import { addOauth2Redirect, createOauth2Client } from '../api'
 import { useAccess } from '../auth/AccessContext'
 import { isOauth2Admin } from '../utils/groupAccess'
 
@@ -13,6 +13,7 @@ export default function Oauth2ClientCreate() {
   const [name, setName] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [landingUrl, setLandingUrl] = useState('')
+  const [redirectUrl, setRedirectUrl] = useState('')
   const [type, setType] = useState<'basic' | 'public'>('basic')
   const [message, setMessage] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -28,10 +29,7 @@ export default function Oauth2ClientCreate() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!isAdmin) return
-    if (requestReauthIfNeeded()) {
-      setMessage(t('oauth2.create.messages.reauthRequired'))
-      return
-    }
+    if (requestReauthIfNeeded()) return
     if (!name.trim()) {
       setMessage(t('oauth2.create.messages.nameRequired'))
       return
@@ -47,13 +45,23 @@ export default function Oauth2ClientCreate() {
     setSaving(true)
     setMessage(null)
     try {
+      const trimmedName = name.trim()
+      const trimmedDisplayName = displayName.trim()
+      const trimmedLandingUrl = landingUrl.trim()
+      const trimmedRedirectUrl = redirectUrl.trim()
+
       await createOauth2Client({
-        name: name.trim(),
-        displayName: displayName.trim(),
-        landingUrl: landingUrl.trim(),
+        name: trimmedName,
+        displayName: trimmedDisplayName,
+        landingUrl: trimmedLandingUrl,
         type,
       })
-      navigate(`/admin/oauth2/${encodeURIComponent(name.trim())}`)
+
+      if (trimmedRedirectUrl) {
+        await addOauth2Redirect(trimmedName, trimmedRedirectUrl)
+      }
+
+      navigate(`/admin/oauth2/${encodeURIComponent(trimmedName)}`)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : t('oauth2.create.messages.failed'))
     } finally {
@@ -113,6 +121,17 @@ export default function Oauth2ClientCreate() {
                 onFocus={requestReauthIfNeeded}
                 disabled={!isAdmin}
                 placeholder={t('oauth2.create.landingPlaceholder')}
+              />
+            </label>
+            <label className="field">
+              <span>{t('oauth2.create.redirectUrlOptional')}</span>
+              <input
+                type="url"
+                value={redirectUrl}
+                onChange={(event) => setRedirectUrl(event.target.value)}
+                onFocus={requestReauthIfNeeded}
+                disabled={!isAdmin}
+                placeholder={t('oauth2.create.redirectPlaceholder')}
               />
             </label>
             <label className="field">

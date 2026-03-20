@@ -68,6 +68,14 @@ export type Oauth2ClientDetail = {
   strictRedirectUri: boolean
   consentPromptEnabled: boolean | null
   deviceFlowEnabled: boolean
+  visibility: {
+    landing: boolean
+    redirectUrls: boolean
+    security: boolean
+    scopeMap: boolean
+    supScopeMap: boolean
+    claimMap: boolean
+  }
 }
 
 function firstAttr(entry: Entry, key: string) {
@@ -92,6 +100,12 @@ function parseOptionalBool(entry: Entry, key: string): boolean | null {
 function parseBool(entry: Entry, key: string) {
   const parsed = parseOptionalBool(entry, key)
   return parsed ?? false
+}
+
+function hasAttr(entry: Entry, key: string) {
+  const attrs = entry.attrs
+  if (!attrs) return false
+  return Object.prototype.hasOwnProperty.call(attrs, key)
 }
 
 function detectJoin(raw: string): Oauth2ClaimJoin {
@@ -228,6 +242,20 @@ function parseOauth2Detail(entry: Entry): Oauth2ClientDetail {
     strictRedirectUri: parseBool(entry, 'oauth2_strict_redirect_uri'),
     consentPromptEnabled: consentPrompt,
     deviceFlowEnabled: parseBool(entry, 'oauth2_device_flow_enable'),
+    visibility: {
+      landing: hasAttr(entry, 'oauth2_rs_origin_landing'),
+      redirectUrls: hasAttr(entry, 'oauth2_rs_origin'),
+      security:
+        hasAttr(entry, 'oauth2_allow_insecure_client_disable_pkce') ||
+        hasAttr(entry, 'oauth2_strict_redirect_uri') ||
+        hasAttr(entry, 'oauth2_jwt_legacy_crypto_enable') ||
+        hasAttr(entry, 'oauth2_allow_localhost_redirect') ||
+        hasAttr(entry, 'oauth2_prefer_short_username') ||
+        hasAttr(entry, 'oauth2_consent_prompt_enable'),
+      scopeMap: hasAttr(entry, 'oauth2_rs_scope_map'),
+      supScopeMap: hasAttr(entry, 'oauth2_rs_sup_scope_map'),
+      claimMap: hasAttr(entry, 'oauth2_rs_claim_map'),
+    },
   }
 }
 

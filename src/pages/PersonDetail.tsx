@@ -456,7 +456,7 @@ export default function PersonDetail() {
     )
   }
 
-  const resetLink = resetToken ? `${window.location.origin}/centered-page?token=${resetToken.token}` : ''
+  const resetLink = resetToken ? `${window.location.origin}/reset?token=${resetToken.token}` : ''
   const passkeys = passkeySummary
 
   return (

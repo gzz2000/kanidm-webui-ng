@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Dispatch, SetStateAction } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import AccountGroupSelect from '../components/AccountGroupSelect'
@@ -292,15 +291,6 @@ export default function Oauth2ClientDetail() {
     return false
   }
 
-  const requireReauth = (
-    setMessage: Dispatch<SetStateAction<string | null>>,
-    message: string,
-  ) => {
-    if (!requestReauthIfNeeded()) return false
-    setMessage(message)
-    return true
-  }
-
   const refreshClientMaps = useCallback(
     async (clientName: string) => {
       const latest = await fetchOauth2Client(clientName)
@@ -320,8 +310,7 @@ export default function Oauth2ClientDetail() {
 
   const handleIdentitySave = async () => {
     if (!client || !isAdmin) return
-    if (requireReauth(setIdentityMessage, t('oauth2.messages.reauthIdentity')))
-      return
+    if (requestReauthIfNeeded()) return
     setIdentityMessage(null)
     try {
       const trimmedName = name.trim()
@@ -358,10 +347,7 @@ export default function Oauth2ClientDetail() {
 
   const handleLandingSave = async () => {
     if (!client || !isAdmin) return
-    if (
-      requireReauth(setRedirectMessage, t('oauth2.messages.reauthRedirect'))
-    )
-      return
+    if (requestReauthIfNeeded()) return
     setRedirectMessage(null)
     try {
       await updateOauth2Client({
@@ -378,8 +364,7 @@ export default function Oauth2ClientDetail() {
 
   const handleAddRedirect = async () => {
     if (!client || !isAdmin) return
-    if (requireReauth(setRedirectMessage, t('oauth2.messages.reauthRedirectAdd')))
-      return
+    if (requestReauthIfNeeded()) return
     const url = redirectUrl.trim()
     if (!url) return
     setRedirectMessage(null)
@@ -397,8 +382,7 @@ export default function Oauth2ClientDetail() {
 
   const handleRemoveRedirect = async (url: string) => {
     if (!client || !isAdmin) return
-    if (requireReauth(setRedirectMessage, t('oauth2.messages.reauthRedirectRemove')))
-      return
+    if (requestReauthIfNeeded()) return
     setRedirectMessage(null)
     try {
       await removeOauth2Redirect(client.name, url)
@@ -415,10 +399,7 @@ export default function Oauth2ClientDetail() {
 
   const handleSaveSecurity = async () => {
     if (!client || !isAdmin) return
-    if (requestReauthIfNeeded()) {
-      setSecurityMessage(t('oauth2.messages.reauthSecurity'))
-      return
-    }
+    if (requestReauthIfNeeded()) return
     setSecurityMessage(null)
     const updates: Promise<void>[] = []
 
@@ -497,10 +478,7 @@ export default function Oauth2ClientDetail() {
 
   const handleAddScopeMap = async () => {
     if (!client || !isAdmin) return
-    if (requestReauthIfNeeded()) {
-      setScopeMessage(t('oauth2.messages.reauthScope'))
-      return
-    }
+    if (requestReauthIfNeeded()) return
     const group = scopeGroup.trim()
     const scopes = parseScopeInput(scopeValues)
     if (!group || scopes.length === 0) {
@@ -528,10 +506,7 @@ export default function Oauth2ClientDetail() {
 
   const handleRemoveScopeMap = async (groupId: string) => {
     if (!client || !isAdmin) return
-    if (requestReauthIfNeeded()) {
-      setScopeMessage(t('oauth2.messages.reauthScope'))
-      return
-    }
+    if (requestReauthIfNeeded()) return
     setScopeMessage(null)
     try {
       await deleteOauth2ScopeMap(client.name, groupId)
@@ -545,10 +520,7 @@ export default function Oauth2ClientDetail() {
 
   const handleAddSupScopeMap = async () => {
     if (!client || !isAdmin) return
-    if (requestReauthIfNeeded()) {
-      setSupScopeMessage(t('oauth2.messages.reauthSupScope'))
-      return
-    }
+    if (requestReauthIfNeeded()) return
     const group = supScopeGroup.trim()
     const scopes = parseScopeInput(supScopeValues)
     if (!group || scopes.length === 0) {
@@ -576,10 +548,7 @@ export default function Oauth2ClientDetail() {
 
   const handleRemoveSupScopeMap = async (groupId: string) => {
     if (!client || !isAdmin) return
-    if (requestReauthIfNeeded()) {
-      setSupScopeMessage(t('oauth2.messages.reauthSupScope'))
-      return
-    }
+    if (requestReauthIfNeeded()) return
     setSupScopeMessage(null)
     try {
       await deleteOauth2SupScopeMap(client.name, groupId)
@@ -593,10 +562,7 @@ export default function Oauth2ClientDetail() {
 
   const handleAddClaimMap = async () => {
     if (!client || !isAdmin) return
-    if (requestReauthIfNeeded()) {
-      setClaimMessage(t('oauth2.messages.reauthClaim'))
-      return
-    }
+    if (requestReauthIfNeeded()) return
     const claim = claimName.trim()
     const group = claimGroup.trim()
     const values = parseScopeInput(claimValues)
@@ -630,10 +596,7 @@ export default function Oauth2ClientDetail() {
 
   const handleRemoveClaimMap = async (claim: string, groupId: string) => {
     if (!client || !isAdmin) return
-    if (requestReauthIfNeeded()) {
-      setClaimMessage(t('oauth2.messages.reauthClaim'))
-      return
-    }
+    if (requestReauthIfNeeded()) return
     setClaimMessage(null)
     try {
       await deleteOauth2ClaimMap(client.name, claim, groupId)
@@ -647,10 +610,7 @@ export default function Oauth2ClientDetail() {
 
   const handleSecretLoad = async () => {
     if (!client || !isAdmin) return
-    if (requestReauthIfNeeded()) {
-      setSecretMessage(t('oauth2.messages.reauthSecretRead'))
-      return
-    }
+    if (requestReauthIfNeeded()) return
     setSecretMessage(null)
     setSecretLoading(true)
     try {
@@ -665,10 +625,7 @@ export default function Oauth2ClientDetail() {
 
   const handleSecretReset = async () => {
     if (!client || !isAdmin) return
-    if (requestReauthIfNeeded()) {
-      setSecretMessage(t('oauth2.messages.reauthSecretReset'))
-      return
-    }
+    if (requestReauthIfNeeded()) return
     setSecretMessage(null)
     try {
       await resetOauth2BasicSecret(client.name)
@@ -697,10 +654,7 @@ export default function Oauth2ClientDetail() {
 
   const handleImageDelete = async () => {
     if (!client || !isAdmin) return
-    if (requestReauthIfNeeded()) {
-      setImageMessage(t('oauth2.messages.reauthImageRemove'))
-      return
-    }
+    if (requestReauthIfNeeded()) return
     setImageMessage(null)
     try {
       await deleteOauth2Image(client.name)
@@ -722,10 +676,7 @@ export default function Oauth2ClientDetail() {
 
   const handleDeleteClient = async () => {
     if (!client || !isAdmin) return
-    if (requestReauthIfNeeded()) {
-      setPageMessage(t('oauth2.messages.reauthDelete'))
-      return
-    }
+    if (requestReauthIfNeeded()) return
     setPageMessage(null)
     try {
       await deleteOauth2Client(client.name)
@@ -752,6 +703,13 @@ export default function Oauth2ClientDetail() {
       </section>
     )
   }
+
+  const canViewLanding = isAdmin || client.visibility.landing
+  const canViewRedirectUrls = isAdmin || client.visibility.redirectUrls
+  const canViewSecurity = isAdmin || client.visibility.security
+  const canViewScopeMap = isAdmin || client.visibility.scopeMap
+  const canViewSupScopeMap = isAdmin || client.visibility.supScopeMap
+  const canViewClaimMap = isAdmin || client.visibility.claimMap
 
   return (
     <section className="page oauth2-page">
@@ -828,33 +786,39 @@ export default function Oauth2ClientDetail() {
           )}
         </div>
 
+        {(canViewLanding || canViewRedirectUrls) && (
         <div className="panel-card">
           <header>
             <h2>{t('oauth2.detail.redirectTitle')}</h2>
             <p>{t('oauth2.detail.redirectDesc')}</p>
           </header>
-          <label className="field">
-            <span>{t('oauth2.create.landingUrl')}</span>
-            <input
-              type="url"
-              value={landingUrl}
-              onChange={(event) => setLandingUrl(event.target.value)}
-              onFocus={requestReauthIfNeeded}
-              disabled={!isAdmin}
-            />
-          </label>
-          {isAdmin && (
-            <div className="panel-actions">
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={() => void handleLandingSave()}
-              >
-                {t('oauth2.actions.saveLanding')}
-              </button>
-            </div>
+          {canViewLanding && (
+            <>
+              <label className="field">
+                <span>{t('oauth2.create.landingUrl')}</span>
+                <input
+                  type="url"
+                  value={landingUrl}
+                  onChange={(event) => setLandingUrl(event.target.value)}
+                  onFocus={requestReauthIfNeeded}
+                  disabled={!isAdmin}
+                />
+              </label>
+              {isAdmin && (
+                <div className="panel-actions">
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() => void handleLandingSave()}
+                  >
+                    {t('oauth2.actions.saveLanding')}
+                  </button>
+                </div>
+              )}
+            </>
           )}
 
+          {canViewRedirectUrls && (
           <div className="credential-section">
             <div className="section-header">
               <h3>{t('oauth2.detail.additionalRedirectTitle')}</h3>
@@ -874,14 +838,14 @@ export default function Oauth2ClientDetail() {
                           <div className="ssh-confirm">
                             <span className="muted-text">{t('oauth2.detail.confirmRemoveRedirect')}</span>
                             <button
-                              className="secondary-button"
+                              className="link-button"
                               type="button"
                               onClick={() => void handleRemoveRedirect(url)}
                             >
                               {t('oauth2.actions.remove')}
                             </button>
                             <button
-                              className="ghost-button"
+                              className="link-button"
                               type="button"
                               onClick={() => setRedirectConfirmUrl(null)}
                             >
@@ -890,7 +854,7 @@ export default function Oauth2ClientDetail() {
                           </div>
                         ) : (
                           <button
-                            className="secondary-button"
+                            className="link-button"
                             type="button"
                             onClick={() => {
                               if (requestReauthIfNeeded()) return
@@ -931,9 +895,12 @@ export default function Oauth2ClientDetail() {
               </>
             )}
           </div>
+          )}
           {redirectMessage && <p className="inline-feedback">{redirectMessage}</p>}
         </div>
+        )}
 
+        {canViewSecurity && (
         <div className="panel-card">
           <header>
             <h2>{t('oauth2.detail.securityTitle')}</h2>
@@ -1048,7 +1015,9 @@ export default function Oauth2ClientDetail() {
             </div>
           )}
         </div>
+        )}
 
+        {canViewScopeMap && (
         <div className="panel-card">
           <header>
             <h2>{t('oauth2.detail.scopeTitle')}</h2>
@@ -1157,7 +1126,9 @@ export default function Oauth2ClientDetail() {
           )}
           {scopeMessage && <p className="inline-feedback">{scopeMessage}</p>}
         </div>
+        )}
 
+        {canViewSupScopeMap && (
         <div className="panel-card">
           <header>
             <h2>{t('oauth2.detail.supScopeTitle')}</h2>
@@ -1263,7 +1234,9 @@ export default function Oauth2ClientDetail() {
           )}
           {supScopeMessage && <p className="inline-feedback">{supScopeMessage}</p>}
         </div>
+        )}
 
+        {canViewClaimMap && (
         <div className="panel-card">
           <header>
             <h2>{t('oauth2.detail.claimTitle')}</h2>
@@ -1410,6 +1383,7 @@ export default function Oauth2ClientDetail() {
           )}
           {claimMessage && <p className="inline-feedback">{claimMessage}</p>}
         </div>
+        )}
 
         {client.type === 'basic' && (
           <div className="panel-card">
