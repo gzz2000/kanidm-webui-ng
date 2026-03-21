@@ -87,14 +87,14 @@ export default function People() {
   }, [effectiveHideUnrelated, filteredPeople, groups, isAdmin, user?.uuid])
 
   return (
-    <section className="page people-page">
-      <div className="people-header">
+    <section className="page people-page management-list-page">
+      <div className="management-list-header">
         <div>
           <h1>{t('people.title')}</h1>
           <p className="page-note">{t('people.subtitle')}</p>
         </div>
         {canCreate && (
-          <div className="people-actions">
+          <div className="management-list-actions">
             <button
               className="primary-button"
               type="button"
@@ -106,9 +106,9 @@ export default function People() {
         )}
       </div>
 
-      <div className="people-toolbar">
+      <div className="management-list-toolbar">
         <input
-          className="people-search"
+          className="management-list-search"
           type="search"
           value={query}
           placeholder={t('people.searchPlaceholder')}
@@ -136,19 +136,19 @@ export default function People() {
       {loading ? (
         <p className="page-note">{t('people.loading')}</p>
       ) : (
-        <div className="people-list">
+        <div className="management-list">
           {visiblePeople.length === 0 ? (
             <p className="muted-text">{t('people.empty')}</p>
           ) : (
             visiblePeople.map((person) => (
               <button
-                className="people-row"
+                className="management-list-row"
                 key={person.uuid}
                 type="button"
                 onClick={() => navigate(`/admin/people/${person.uuid}`)}
               >
                 <div>
-                  <div className="people-name">
+                  <div className="management-list-name">
                     <span>{person.displayName}</span>
                     {isHighPrivilege(person.memberOf) && (
                       <span
@@ -159,13 +159,13 @@ export default function People() {
                       </span>
                     )}
                   </div>
-                  <div className="people-meta">
+                  <div className="management-list-meta">
                     <span>{person.name}</span>
                     <span>{person.uuid}</span>
                   </div>
                 </div>
                 {canReadPii && (
-                  <div className="people-cell">
+                  <div className="management-list-cell">
                     {person.emails.length > 0
                       ? person.emails.join(', ')
                       : t('people.noEmail')}

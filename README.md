@@ -1,6 +1,6 @@
 # Modern Web UI for Kanidm
 
-This project aims to implement a fully-featured web UI for the [kanidm](https://github.com/kanidm/kanidm) identity management platform.
+This project implements a fully-featured web UI for the [kanidm](https://github.com/kanidm/kanidm) identity management platform.
 
 ![screenshot-login](./README.assets/screenshot-login.png)
 
@@ -35,7 +35,7 @@ This project aims to implement a fully-featured web UI for the [kanidm](https://
 - [x] Service accounts management
 - [x] Friendly user on boarding
 - [x] OAuth2 clients
-- [ ] System (domain, db, etc.) management and customization
+- [x] System (domain, db, etc.) management and customization
 
 
 
@@ -45,10 +45,65 @@ While AI-generated code is not accepted for the security-critical kanidm server,
 
 We aim to build the Web UI with minimum to no change to the server and its REST APIs to ensure its security.
 
-### Start Developing
+
+
+### Development
 
 `npm install` , then `npm run dev` . Visit your site at `http://localhost:5173`.
 
 The development server includes a reverse proxy to `https://localhost:8443` for the API endpoints. You should have the development server up by running `<path to kanidm>/server/daemon/run_insecure_dev_server.sh` as instructed in [kanidm book](https://kanidm.github.io/kanidm/master/developers/index.html#development-server-for-interactive-testing). 
 
 To make the WebAuthn working, you should edit `server/daemon/insecure_server.toml` and set `origin = "http://localhost:5173"`.
+
+
+
+### Production Deployment
+
+Run `npm run build` to compile the frontend, and then setup a reverse proxy to serve both the frontend and the backend. Example configuration for nginx:
+
+``` nginx
+server {
+    listen 443 ssl http2;
+    server_name idm.example.com;
+
+    # TLS certs
+    ssl_certificate     /etc/letsencrypt/live/idm.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/idm.example.com/privkey.pem;
+
+    # Built frontend (vite build output)
+    root /var/www/kanidm-webui-ng/dist;
+    index index.html;
+
+    # --- Kanidm backend ---
+    # Adjust if your kanidmd is elsewhere.
+    set $kanidm_upstream https://127.0.0.1:8443;
+    # If backend uses self-signed cert in dev:
+    proxy_ssl_trusted_certificate /path/to/self-signed-chain.pem;
+
+    # Preserve host/proto/client info
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Real-IP $remote_addr;
+
+    # API and oauth endpoints proxied to kanidmd
+    location /v1/ { proxy_pass $kanidm_upstream; }
+    location /scim/ { proxy_pass $kanidm_upstream; }
+    location /oauth2/ { proxy_pass $kanidm_upstream; }
+    location /ui/ { proxy_pass $kanidm_upstream; }
+    location = /manifest.webmanifest { proxy_pass $kanidm_upstream; }
+
+    # SPA routes
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Optional: cache static hashed assets aggressively
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+}
+```
+

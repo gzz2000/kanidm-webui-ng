@@ -40,14 +40,14 @@ export default function Oauth2Clients() {
   }, [clients, query])
 
   return (
-    <section className="page oauth2-page">
-      <div className="oauth2-header">
+    <section className="page oauth2-page management-list-page">
+      <div className="management-list-header">
         <div>
           <h1>{t('oauth2.list.title')}</h1>
           <p className="page-note">{t('oauth2.list.subtitle')}</p>
         </div>
         {isAdmin && (
-          <div className="oauth2-actions">
+          <div className="management-list-actions">
             <button
               className="primary-button"
               type="button"
@@ -59,9 +59,9 @@ export default function Oauth2Clients() {
         )}
       </div>
 
-      <div className="oauth2-toolbar">
+      <div className="management-list-toolbar">
         <input
-          className="oauth2-search"
+          className="management-list-search"
           placeholder={t('oauth2.list.searchPlaceholder')}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -75,12 +75,12 @@ export default function Oauth2Clients() {
       ) : filteredClients.length === 0 ? (
         <p className="muted-text">{t('oauth2.list.empty')}</p>
       ) : (
-        <div className="oauth2-list">
+        <div className="management-list">
           {filteredClients.map((client) => (
             <button
               key={client.uuid}
               type="button"
-              className="oauth2-row"
+              className="management-list-row oauth2-row"
               onClick={() => navigate(`/admin/oauth2/${encodeURIComponent(client.name)}`)}
             >
               <div>

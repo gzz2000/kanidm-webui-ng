@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 :root {
+  --app-vh: 100dvh;
   font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -12,14 +13,24 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+@supports not (height: 100dvh) {
+  :root {
+    --app-vh: 100vh;
+  }
+}
+
 * {
   box-sizing: border-box;
+}
+
+html {
+  min-height: var(--app-vh);
 }
 
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: var(--app-vh);
 }
 
 a {
@@ -27,5 +38,5 @@ a {
 }
 
 #root {
-  min-height: 100vh;
+  min-height: var(--app-vh);
 }

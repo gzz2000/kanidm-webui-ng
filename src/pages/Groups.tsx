@@ -54,14 +54,14 @@ export default function Groups() {
   }, [canManageGroup, groups, hideUnmanaged, query])
 
   return (
-    <section className="page groups-page">
-      <div className="groups-header">
+    <section className="page groups-page management-list-page">
+      <div className="management-list-header">
         <div>
           <h1>{t('groups.title')}</h1>
           <p className="page-note">{t('groups.subtitle')}</p>
         </div>
         {canCreate && (
-          <div className="groups-actions">
+          <div className="management-list-actions">
             <button
               className="primary-button"
               type="button"
@@ -73,9 +73,9 @@ export default function Groups() {
         )}
       </div>
 
-      <div className="groups-toolbar">
+      <div className="management-list-toolbar">
         <input
-          className="groups-search"
+          className="management-list-search"
           type="search"
           value={query}
           placeholder={t('groups.searchPlaceholder')}
@@ -98,19 +98,19 @@ export default function Groups() {
       {loading ? (
         <p className="page-note">{t('groups.loading')}</p>
       ) : (
-        <div className="groups-list">
+        <div className="management-list">
           {filteredGroups.length === 0 ? (
             <p className="muted-text">{t('groups.empty')}</p>
           ) : (
             filteredGroups.map((group) => (
               <button
-                className="groups-row"
+                className="management-list-row"
                 key={group.uuid}
                 type="button"
                 onClick={() => navigate(`/admin/groups/${group.uuid}`)}
               >
                 <div>
-                  <div className="groups-name">
+                  <div className="management-list-name">
                     <span>{group.displayName}</span>
                     {isHighPrivilege(group.memberOf) && (
                       <span
@@ -121,12 +121,12 @@ export default function Groups() {
                       </span>
                     )}
                   </div>
-                  <div className="groups-meta">
+                  <div className="management-list-meta">
                     <span>{group.name}</span>
                     <span>{group.uuid}</span>
                   </div>
                 </div>
-                <div className="groups-cell">
+                <div className="management-list-cell">
                   {group.description ? group.description : t('groups.noDescription')}
                 </div>
               </button>

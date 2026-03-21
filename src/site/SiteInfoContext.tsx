@@ -19,6 +19,7 @@ type SiteInfoValue = {
 }
 
 const DEFAULT_DISPLAY_NAME = 'Kanidm'
+const DEFAULT_FAVICON = '/vite.svg'
 
 const SiteInfoContext = createContext<SiteInfoValue | undefined>(undefined)
 
@@ -62,6 +63,25 @@ export function SiteInfoProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('kanidm:site-brand-updated', onChanged)
     }
   }, [refresh])
+
+  useEffect(() => {
+    const href = imageQuery.data ?? DEFAULT_FAVICON
+    const existing = document.querySelector<HTMLLinkElement>('link#app-favicon')
+    if (existing) {
+      existing.href = href
+      return
+    }
+    const link = document.createElement('link')
+    link.id = 'app-favicon'
+    link.rel = 'icon'
+    link.type = 'image/svg+xml'
+    link.href = href
+    document.head.appendChild(link)
+  }, [imageQuery.data])
+
+  useEffect(() => {
+    document.title = displayQuery.data ?? DEFAULT_DISPLAY_NAME
+  }, [displayQuery.data])
 
   const value = useMemo(
     () => ({

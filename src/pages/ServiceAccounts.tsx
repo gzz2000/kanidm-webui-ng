@@ -54,14 +54,14 @@ export default function ServiceAccounts() {
   }, [accounts, canManageAccount, hideUnmanaged, query])
 
   return (
-    <section className="page service-accounts-page">
-      <div className="service-accounts-header">
+    <section className="page service-accounts-page management-list-page">
+      <div className="management-list-header">
         <div>
           <h1>{t('serviceAccounts.title')}</h1>
           <p className="page-note">{t('serviceAccounts.subtitle')}</p>
         </div>
         {canCreate && (
-          <div className="service-accounts-actions">
+          <div className="management-list-actions">
             <button
               className="primary-button"
               type="button"
@@ -73,9 +73,9 @@ export default function ServiceAccounts() {
         )}
       </div>
 
-      <div className="service-accounts-toolbar">
+      <div className="management-list-toolbar">
         <input
-          className="service-accounts-search"
+          className="management-list-search"
           type="search"
           value={query}
           placeholder={t('serviceAccounts.searchPlaceholder')}
@@ -98,19 +98,19 @@ export default function ServiceAccounts() {
       {loading ? (
         <p className="page-note">{t('serviceAccounts.loading')}</p>
       ) : (
-        <div className="service-accounts-list">
+        <div className="management-list">
           {filteredAccounts.length === 0 ? (
             <p className="muted-text">{t('serviceAccounts.empty')}</p>
           ) : (
             filteredAccounts.map((account) => (
               <button
-                className="service-accounts-row"
+                className="management-list-row"
                 key={account.uuid}
                 type="button"
                 onClick={() => navigate(`/admin/service-accounts/${account.uuid}`)}
               >
                 <div>
-                  <div className="service-accounts-name">
+                  <div className="management-list-name">
                     <span>{account.displayName}</span>
                     {isHighPrivilege(account.memberOf) && (
                       <span className="badge badge-warn badge-sharp" title={t('shell.highPrivilegeTip')}>
@@ -118,12 +118,12 @@ export default function ServiceAccounts() {
                       </span>
                     )}
                   </div>
-                  <div className="service-accounts-meta">
+                  <div className="management-list-meta">
                     <span>{account.name}</span>
                     <span>{account.uuid}</span>
                   </div>
                 </div>
-                <div className="service-accounts-cell">
+                <div className="management-list-cell">
                   {account.emails.length > 0
                     ? account.emails.join(', ')
                     : t('serviceAccounts.noEmail')}
