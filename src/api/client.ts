@@ -25,7 +25,10 @@ export async function apiRequest<T = unknown>(
   const query = buildQuery(args.query)
   const url = `${path}${query}`
   const hasBody = Object.prototype.hasOwnProperty.call(args, 'body')
-  const body = hasBody ? JSON.stringify(args.body) : undefined
+  const body =
+    hasBody || method === 'delete'
+      ? JSON.stringify(hasBody ? args.body : [])
+      : undefined
   return request<T>(url, {
     method: method.toUpperCase(),
     body,

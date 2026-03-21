@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   addGroupMembers,
   createCredentialResetToken,
@@ -22,6 +23,7 @@ import {
 export default function PersonCreate() {
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const { canEdit, memberOf, requestReauth } = useAccess()
   const { user } = useAuth()
   const [name, setName] = useState('')
@@ -121,6 +123,10 @@ export default function PersonCreate() {
         await Promise.all(
           Array.from(selectedGroups).map((groupId) => addGroupMembers(groupId, [memberRef])),
         )
+      }
+      void queryClient.invalidateQueries({ queryKey: ['people-list'] })
+      if (selectedGroups.size > 0) {
+        void queryClient.invalidateQueries({ queryKey: ['groups-list'] })
       }
       setCreatedPersonId(personId)
       setCreatedPersonName(created?.displayName ?? trimmedDisplay)

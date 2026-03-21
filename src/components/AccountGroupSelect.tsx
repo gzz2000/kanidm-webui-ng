@@ -147,7 +147,7 @@ export default function AccountGroupSelect({
           if (readOnly) return
           const next = event.target.value
           setQuery(next)
-          if (!open) onChange(next)
+          onChange(next)
         }}
         onFocus={() => {
           onFocus?.()

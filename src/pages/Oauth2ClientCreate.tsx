@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { addOauth2Redirect, createOauth2Client } from '../api'
 import { useAccess } from '../auth/AccessContext'
 import { isOauth2Admin } from '../utils/groupAccess'
@@ -8,6 +9,7 @@ import { isOauth2Admin } from '../utils/groupAccess'
 export default function Oauth2ClientCreate() {
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const { canEdit, requestReauth, memberOf } = useAccess()
   const isAdmin = isOauth2Admin(memberOf)
   const [name, setName] = useState('')
@@ -61,6 +63,7 @@ export default function Oauth2ClientCreate() {
         await addOauth2Redirect(trimmedName, trimmedRedirectUrl)
       }
 
+      void queryClient.invalidateQueries({ queryKey: ['oauth2-clients-list'] })
       navigate(`/admin/oauth2/${encodeURIComponent(trimmedName)}`)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : t('oauth2.create.messages.failed'))

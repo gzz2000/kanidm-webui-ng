@@ -32,25 +32,27 @@ function AppShellContent() {
     isMessageSender(memberOf)
   const canSeeGroupsByGroup = isGroupAdmin(memberOf) || isAccessControlAdmin(memberOf)
   const canSeeServiceAccountsByGroup =
-    isServiceAccountAdmin(memberOf) || isAccessControlAdmin(memberOf)
+    isServiceAccountAdmin(memberOf) || isAccessControlAdmin(memberOf) || isGroupAdmin(memberOf)
   const groupsProbe = useQuery({
-    queryKey: ['capability', 'groups-read'],
+    queryKey: ['capability', 'groups-read', user?.uuid ?? 'anonymous'],
     queryFn: fetchGroups,
-    enabled: !canSeeGroupsByGroup,
+    enabled: Boolean(user?.uuid) && !canSeeGroupsByGroup,
     staleTime: 60_000,
     gcTime: 300_000,
     retry: 0,
   })
   const serviceAccountsProbe = useQuery({
-    queryKey: ['capability', 'service-accounts-read'],
+    queryKey: ['capability', 'service-accounts-read', user?.uuid ?? 'anonymous'],
     queryFn: fetchServiceAccounts,
-    enabled: !canSeeServiceAccountsByGroup,
+    enabled: Boolean(user?.uuid) && !canSeeServiceAccountsByGroup,
     staleTime: 60_000,
     gcTime: 300_000,
     retry: 0,
   })
-  const canSeeGroups = canSeeGroupsByGroup || groupsProbe.isSuccess
-  const canSeeServiceAccounts = canSeeServiceAccountsByGroup || serviceAccountsProbe.isSuccess
+  const canSeeGroups =
+    canSeeGroupsByGroup || ((groupsProbe.data?.length ?? 0) > 0)
+  const canSeeServiceAccounts =
+    canSeeServiceAccountsByGroup || ((serviceAccountsProbe.data?.length ?? 0) > 0)
   const navItems = [
     { to: '/', label: t('shell.navApps') },
     { to: '/profile', label: t('shell.navProfile') },

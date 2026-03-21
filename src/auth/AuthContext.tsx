@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleAuthExpired = () => {
       setStatus('unauthenticated')
       setUser(null)
-      void queryClient.invalidateQueries({ queryKey: ['selfProfile'] })
+      queryClient.clear()
     }
     window.addEventListener('kanidm:auth-expired', handleAuthExpired)
     return () => {
@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await logout()
         } finally {
           clearAuthToken()
-          queryClient.removeQueries({ queryKey: ['selfProfile'] })
+          queryClient.clear()
           setStatus('unauthenticated')
           setUser(null)
         }

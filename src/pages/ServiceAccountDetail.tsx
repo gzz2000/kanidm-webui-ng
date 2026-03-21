@@ -2,7 +2,7 @@ import type { FormEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   addServiceAccountSshKey,
   clearServiceAccountAttr,
@@ -81,6 +81,7 @@ export default function ServiceAccountDetail() {
   const { t } = useTranslation()
   const { canEdit, memberOf, requestReauth } = useAccess()
   const { user } = useAuth()
+  const queryClient = useQueryClient()
   const [message, setMessage] = useState<string | null>(null)
   const [identityMessage, setIdentityMessage] = useState<string | null>(null)
   const [validityMessage, setValidityMessage] = useState<string | null>(null)
@@ -174,6 +175,14 @@ export default function ServiceAccountDetail() {
       accountValidFrom: account.accountValidFrom,
       accountExpire: account.accountExpire,
     })
+  }
+
+  const syncServiceAccountCache = (account: ServiceAccountDetailRecord) => {
+    queryClient.setQueryData(['service-account-detail', account.uuid], account)
+    if (id && id !== account.uuid) {
+      queryClient.setQueryData(['service-account-detail', id], account)
+    }
+    void queryClient.invalidateQueries({ queryKey: ['service-accounts-list'] })
   }
 
   const accountQuery = useQuery({
@@ -358,6 +367,7 @@ export default function ServiceAccountDetail() {
 
       const refreshed = await fetchServiceAccount(accountMeta.uuid)
       if (refreshed) {
+        syncServiceAccountCache(refreshed)
         setFormState(refreshed)
       }
       setIdentityMessage(t('serviceAccounts.messages.identityUpdated'))
@@ -401,6 +411,7 @@ export default function ServiceAccountDetail() {
       }
       const refreshed = await fetchServiceAccount(accountMeta.uuid)
       if (refreshed) {
+        syncServiceAccountCache(refreshed)
         setFormState(refreshed)
       }
       setValidityMessage(t('serviceAccounts.messages.validityUpdated'))
@@ -429,6 +440,7 @@ export default function ServiceAccountDetail() {
       await updateServiceAccount({ id: accountMeta.uuid, emails: normalizedEmails })
       const refreshed = await fetchServiceAccount(accountMeta.uuid)
       if (refreshed) {
+        syncServiceAccountCache(refreshed)
         setFormState(refreshed)
       }
       setEmailMessage(t('serviceAccounts.messages.emailUpdated'))

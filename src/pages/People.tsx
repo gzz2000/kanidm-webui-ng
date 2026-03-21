@@ -77,11 +77,14 @@ export default function People() {
   const visiblePeople = useMemo(() => {
     if (isAdmin || !effectiveHideUnrelated) return filteredPeople
     const manageableGroups = new Set(groups.map((group) => normalizeGroupName(group.name)))
-    if (manageableGroups.size === 0) return []
+    if (manageableGroups.size === 0) {
+      return filteredPeople.filter((person) => person.uuid === user?.uuid)
+    }
     return filteredPeople.filter((person) =>
+      person.uuid === user?.uuid ||
       person.memberOf.some((group) => manageableGroups.has(normalizeGroupName(group))),
     )
-  }, [effectiveHideUnrelated, filteredPeople, groups, isAdmin])
+  }, [effectiveHideUnrelated, filteredPeople, groups, isAdmin, user?.uuid])
 
   return (
     <section className="page people-page">

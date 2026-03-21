@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { createGroup } from '../api'
 import { useAccess } from '../auth/AccessContext'
 import { useAuth } from '../auth/AuthContext'
@@ -11,6 +12,7 @@ import { isAccessControlAdmin, isGroupAdmin } from '../utils/groupAccess'
 export default function GroupCreate() {
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const { canEdit, memberOf, requestReauth } = useAccess()
   const { user } = useAuth()
   const [name, setName] = useState('')
@@ -56,6 +58,7 @@ export default function GroupCreate() {
         name: trimmedName,
         entryManagedBy: applyDomain(entryManagedBy.trim(), domainSuffix) || undefined,
       })
+      void queryClient.invalidateQueries({ queryKey: ['groups-list'] })
       navigate(`/admin/groups/${encodeURIComponent(trimmedName)}`)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : t('groups.create.messages.failed'))

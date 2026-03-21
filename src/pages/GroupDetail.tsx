@@ -2,7 +2,7 @@ import type { FormEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   addGroupMembers,
   clearGroupAttr,
@@ -51,6 +51,7 @@ export default function GroupDetail() {
   const { t } = useTranslation()
   const { canEdit, memberOf, requestReauth } = useAccess()
   const { user } = useAuth()
+  const queryClient = useQueryClient()
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
   const [identityMessage, setIdentityMessage] = useState<string | null>(null)
@@ -137,6 +138,14 @@ export default function GroupDetail() {
       directMemberOf: group.directMemberOf,
       entryManagedBy: group.entryManagedBy,
     })
+  }
+
+  const syncGroupCache = (group: GroupDetailRecord) => {
+    queryClient.setQueryData(['group-detail', group.uuid], group)
+    if (id && id !== group.uuid) {
+      queryClient.setQueryData(['group-detail', id], group)
+    }
+    void queryClient.invalidateQueries({ queryKey: ['groups-list'] })
   }
 
   useEffect(() => {
@@ -240,6 +249,7 @@ export default function GroupDetail() {
       }
       const refreshed = await fetchGroup(groupMeta.uuid)
       if (refreshed) {
+        syncGroupCache(refreshed)
         setFormState(refreshed)
       }
       setIdentityMessage(t('groups.messages.identityUpdated'))
@@ -274,6 +284,7 @@ export default function GroupDetail() {
       }
       const refreshed = await fetchGroup(groupMeta.uuid)
       if (refreshed) {
+        syncGroupCache(refreshed)
         setFormState(refreshed)
       }
       setMailMessage(t('groups.messages.mailUpdated'))

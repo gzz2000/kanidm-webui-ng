@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import AccountGroupSelect from '../components/AccountGroupSelect'
 import ImageEditor from '../components/ImageEditor'
 import {
@@ -76,6 +76,7 @@ export default function Oauth2ClientDetail() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const { canEdit, requestReauth, memberOf } = useAccess()
+  const queryClient = useQueryClient()
   const isAdmin = isOauth2Admin(memberOf)
   const [client, setClient] = useState<Oauth2ClientDetail | null>(null)
   const [pageMessage, setPageMessage] = useState<string | null>(null)
@@ -313,6 +314,11 @@ export default function Oauth2ClientDetail() {
     async (clientName: string) => {
       const latest = await fetchOauth2Client(clientName)
       if (!latest) return
+      queryClient.setQueryData(['oauth2-client-detail', latest.name], latest)
+      if (id && id !== latest.name) {
+        queryClient.setQueryData(['oauth2-client-detail', id], latest)
+      }
+      void queryClient.invalidateQueries({ queryKey: ['oauth2-clients-list'] })
       setClient((prev) => {
         if (!prev) return latest
         return {
@@ -323,7 +329,18 @@ export default function Oauth2ClientDetail() {
         }
       })
     },
-    [],
+    [id, queryClient],
+  )
+
+  const syncOauth2ClientCache = useCallback(
+    (nextClient: Oauth2ClientDetail, originalId?: string) => {
+      queryClient.setQueryData(['oauth2-client-detail', nextClient.name], nextClient)
+      if (originalId && originalId !== nextClient.name) {
+        queryClient.setQueryData(['oauth2-client-detail', originalId], nextClient)
+      }
+      void queryClient.invalidateQueries({ queryKey: ['oauth2-clients-list'] })
+    },
+    [queryClient],
   )
 
   const handleIdentitySave = async () => {
@@ -350,6 +367,7 @@ export default function Oauth2ClientDetail() {
         displayName: trimmedDisplay || client.displayName,
         description: trimmedDescription || null,
       }
+      syncOauth2ClientCache(nextClient, client.name)
       setClient(nextClient)
       setName(nextClient.name)
       setDisplayName(nextClient.displayName)
@@ -373,7 +391,9 @@ export default function Oauth2ClientDetail() {
         landingUrl: landingUrl.trim(),
       })
       const nextLanding = landingUrl.trim()
-      setClient({ ...client, landingUrl: nextLanding || null })
+      const nextClient = { ...client, landingUrl: nextLanding || null }
+      syncOauth2ClientCache(nextClient, client.name)
+      setClient(nextClient)
       setRedirectMessage(t('oauth2.messages.landingUpdated'))
     } catch (error) {
       setRedirectMessage(errorMessage(error, t('oauth2.messages.landingFailed')))
@@ -390,7 +410,9 @@ export default function Oauth2ClientDetail() {
       await addOauth2Redirect(client.name, url)
       setRedirectUrl('')
       if (!client.redirectUrls.includes(url)) {
-        setClient({ ...client, redirectUrls: [...client.redirectUrls, url] })
+        const nextClient = { ...client, redirectUrls: [...client.redirectUrls, url] }
+        syncOauth2ClientCache(nextClient, client.name)
+        setClient(nextClient)
       }
       setRedirectMessage(t('oauth2.messages.redirectAdded'))
     } catch (error) {
@@ -405,10 +427,12 @@ export default function Oauth2ClientDetail() {
     try {
       await removeOauth2Redirect(client.name, url)
       setRedirectConfirmUrl(null)
-      setClient({
+      const nextClient = {
         ...client,
         redirectUrls: client.redirectUrls.filter((item) => item !== url),
-      })
+      }
+      syncOauth2ClientCache(nextClient, client.name)
+      setClient(nextClient)
       setRedirectMessage(t('oauth2.messages.redirectRemoved'))
     } catch (error) {
       setRedirectMessage(errorMessage(error, t('oauth2.messages.redirectRemoveFailed')))
@@ -475,7 +499,7 @@ export default function Oauth2ClientDetail() {
 
     try {
       await Promise.all(updates)
-      setClient({
+      const nextClient = {
         ...client,
         allowInsecurePkce: !pkceRequired,
         strictRedirectUri: strictRedirect,
@@ -483,7 +507,9 @@ export default function Oauth2ClientDetail() {
         allowLocalhostRedirect: allowLocalhost,
         preferShortUsername: preferShortName,
         consentPromptEnabled: client.type === 'basic' ? consentPrompt : client.consentPromptEnabled,
-      })
+      }
+      syncOauth2ClientCache(nextClient, client.name)
+      setClient(nextClient)
       if (client.type === 'basic') {
         setConsentPromptDefault(false)
       }
@@ -688,6 +714,7 @@ export default function Oauth2ClientDetail() {
     setPageMessage(null)
     try {
       await deleteOauth2Client(client.name)
+      void queryClient.invalidateQueries({ queryKey: ['oauth2-clients-list'] })
       navigate('/admin/oauth2')
     } catch (error) {
       setPageMessage(error instanceof Error ? error.message : t('oauth2.messages.deleteFailed'))

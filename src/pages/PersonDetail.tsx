@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { components } from '../api/schema'
 import {
   clearPersonAttr,
@@ -13,6 +13,7 @@ import {
   setPersonUnix,
   updatePerson,
 } from '../api'
+import type { PersonDetail as PersonDetailRecord } from '../api/people'
 import { useAccess } from '../auth/AccessContext'
 import { stripDomain } from '../utils/strings'
 import { getPasskeySummary, getPasswordState, getTotpSummary } from '../utils/credentials'
@@ -71,6 +72,7 @@ export default function PersonDetail() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const { canEdit, memberOf, requestReauth } = useAccess()
+  const queryClient = useQueryClient()
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
   const [identityMessage, setIdentityMessage] = useState<string | null>(null)
@@ -144,6 +146,43 @@ export default function PersonDetail() {
     return [...passkeys, ...attested]
   }, [personMeta])
 
+  const setPersonState = useCallback((person: PersonDetailRecord) => {
+    setPersonMeta({
+      uuid: person.uuid,
+      memberOf: person.memberOf,
+      directMemberOf: person.directMemberOf,
+      passkeys: person.passkeys,
+      attestedPasskeys: person.attestedPasskeys,
+    })
+    const nextForm: PersonForm = {
+      name: person.name,
+      displayName: person.displayName,
+      legalName: person.legalName ?? '',
+      emails: person.emails,
+      validFrom: toLocalDateTime(person.accountValidFrom),
+      expiresAt: toLocalDateTime(person.accountExpire),
+    }
+    setForm(nextForm)
+    setInitialForm(nextForm)
+  }, [])
+
+  const syncPersonCache = (person: PersonDetailRecord) => {
+    queryClient.setQueryData(['person-detail', person.uuid], person)
+    if (id && id !== person.uuid) {
+      queryClient.setQueryData(['person-detail', id], person)
+    }
+    void queryClient.invalidateQueries({ queryKey: ['people-list'] })
+  }
+
+  const refreshPersonState = async () => {
+    if (!id) return null
+    const refreshed = await fetchPerson(personMeta?.uuid ?? id)
+    if (!refreshed) return null
+    syncPersonCache(refreshed)
+    setPersonState(refreshed)
+    return refreshed
+  }
+
   useEffect(() => {
     if (!id) {
       navigate('/admin/people', { replace: true })
@@ -169,24 +208,8 @@ export default function PersonDetail() {
     if (id && person.uuid && person.uuid !== id) {
       navigate(`/admin/people/${person.uuid}`, { replace: true })
     }
-    setPersonMeta({
-      uuid: person.uuid,
-      memberOf: person.memberOf,
-      directMemberOf: person.directMemberOf,
-      passkeys: person.passkeys,
-      attestedPasskeys: person.attestedPasskeys,
-    })
-    const nextForm: PersonForm = {
-      name: person.name,
-      displayName: person.displayName,
-      legalName: person.legalName ?? '',
-      emails: person.emails,
-      validFrom: toLocalDateTime(person.accountValidFrom),
-      expiresAt: toLocalDateTime(person.accountExpire),
-    }
-    setForm(nextForm)
-    setInitialForm(nextForm)
-  }, [id, navigate, personQuery.data, personQuery.error, personQuery.isError, personQuery.isPending, t])
+    setPersonState(person)
+  }, [id, navigate, personQuery.data, personQuery.error, personQuery.isError, personQuery.isPending, setPersonState, t])
 
   const credentialQuery = useQuery({
     queryKey: ['person-credential-status', personMeta?.uuid],
@@ -305,12 +328,7 @@ export default function PersonDetail() {
         legalName:
           canReadPii && legalName !== initialForm.legalName ? legalName : undefined,
       })
-      setInitialForm({
-        ...initialForm,
-        name,
-        displayName,
-        legalName,
-      })
+      await refreshPersonState()
       setIdentityMessage(t('people.messages.identityUpdated'))
     } catch (error) {
       setIdentityMessage(error instanceof Error ? error.message : t('people.messages.identityFailed'))
@@ -337,7 +355,7 @@ export default function PersonDetail() {
         id,
         emails,
       })
-      setInitialForm({ ...initialForm, emails })
+      await refreshPersonState()
       setEmailMessage(t('people.messages.emailUpdated'))
     } catch (error) {
       setEmailMessage(error instanceof Error ? error.message : t('people.messages.emailFailed'))
@@ -379,7 +397,7 @@ export default function PersonDetail() {
           await clearPersonAttr(id, 'account_expire')
         }
       }
-      setInitialForm({ ...initialForm, validFrom, expiresAt })
+      await refreshPersonState()
       setValidityMessage(t('people.messages.validityUpdated'))
     } catch (error) {
       setValidityMessage(error instanceof Error ? error.message : t('people.messages.validityFailed'))

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { createServiceAccount } from '../api'
 import { useAccess } from '../auth/AccessContext'
 import { useAuth } from '../auth/AuthContext'
@@ -11,6 +12,7 @@ import { isServiceAccountAdmin } from '../utils/groupAccess'
 export default function ServiceAccountCreate() {
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const { canEdit, memberOf, requestReauth } = useAccess()
   const { user } = useAuth()
   const [name, setName] = useState('')
@@ -63,6 +65,7 @@ export default function ServiceAccountCreate() {
         entryManagedBy: applyDomain(entryManagedBy.trim(), domainSuffix),
         description: description.trim() || undefined,
       })
+      void queryClient.invalidateQueries({ queryKey: ['service-accounts-list'] })
       navigate(`/admin/service-accounts/${encodeURIComponent(trimmedName)}`)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : t('serviceAccounts.create.messages.failed'))

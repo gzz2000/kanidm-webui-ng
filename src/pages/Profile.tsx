@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   beginCredentialUpdate,
   cancelCredentialUpdate,
@@ -60,6 +60,7 @@ export default function Profile() {
   const { setAuthenticated, user } = useAuth()
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const [loading, setLoading] = useState(true)
   const [profileMessage, setProfileMessage] = useState<string | null>(null)
   const [profile, setProfile] = useState<ProfileForm | null>(null)
@@ -97,7 +98,7 @@ export default function Profile() {
   const [sshConfirmLabel, setSshConfirmLabel] = useState<string | null>(null)
 
   const profileQuery = useQuery({
-    queryKey: ['profile-self'],
+    queryKey: ['selfProfile'],
     queryFn: fetchSelfProfile,
     initialData: user ?? undefined,
     staleTime: 30_000,
@@ -237,24 +238,6 @@ export default function Profile() {
     }
   }
 
-  const loadSshKeys = async (personId: string, showLoading: boolean) => {
-    if (showLoading) {
-      setSshLoading(true)
-    }
-    try {
-      const result = await fetchSshPublicKeys(personId)
-      setSshKeys(result)
-      return true
-    } catch (error) {
-      setSshMessage(error instanceof Error ? error.message : t('profile.ssh.messageLoadFailed'))
-      return false
-    } finally {
-      if (showLoading) {
-        setSshLoading(false)
-      }
-    }
-  }
-
   const handleSshAdd = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!profileId) return
@@ -282,8 +265,8 @@ export default function Profile() {
       await addSshPublicKey(profileId, nextLabel, nextKey)
       setSshLabel('')
       setSshPublicKey('')
-      const refreshed = await loadSshKeys(profileId, false)
-      if (refreshed) {
+      const refreshed = await sshQuery.refetch()
+      if (!refreshed.isError) {
         setSshMessage(t('profile.ssh.messageAdded'))
       }
     } catch (error) {
@@ -307,8 +290,8 @@ export default function Profile() {
     setSshMessage(null)
     try {
       await deleteSshPublicKey(profileId, tag)
-      const refreshed = await loadSshKeys(profileId, false)
-      if (refreshed) {
+      const refreshed = await sshQuery.refetch()
+      if (!refreshed.isError) {
         setSshMessage(t('profile.ssh.messageRemoved'))
       }
     } catch (error) {
@@ -364,6 +347,7 @@ export default function Profile() {
         emails: permissions.emailAllowed && emailChanged ? emails : undefined,
       })
       await setAuthenticated()
+      await queryClient.invalidateQueries({ queryKey: ['selfProfile'] })
       setProfileMessage(t('profile.messageProfileUpdated'))
       setInitialEmails(emails)
       setInitialName(name)
