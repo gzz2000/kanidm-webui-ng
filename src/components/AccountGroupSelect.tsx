@@ -112,7 +112,7 @@ export default function AccountGroupSelect({
     retry: 0,
   })
   const options = useMemo(() => optionsQuery.data ?? [], [optionsQuery.data])
-  const loading = optionsQuery.isPending
+  const loading = open && optionsQuery.isFetching
 
   const filtered = useMemo(
     () => options.filter((option) => matchesOption(option, query)),

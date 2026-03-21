@@ -40,6 +40,11 @@ type GroupMeta = {
   entryManagedBy: string[]
 }
 
+function isMissingPosixGroup(error: unknown) {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+  return message.includes('missingclass') && message.includes('posixgroup')
+}
+
 export default function GroupDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -82,7 +87,16 @@ export default function GroupDetail() {
   })
   const posixQuery = useQuery({
     queryKey: ['group-posix-token', groupMeta?.uuid],
-    queryFn: () => fetchGroupUnixToken(groupMeta!.uuid),
+    queryFn: async () => {
+      try {
+        return await fetchGroupUnixToken(groupMeta!.uuid)
+      } catch (error) {
+        if (isNotFound(error) || isMissingPosixGroup(error)) {
+          return null
+        }
+        throw error
+      }
+    },
     enabled: Boolean(groupMeta?.uuid),
     staleTime: 30_000,
     gcTime: 300_000,
@@ -123,38 +137,6 @@ export default function GroupDetail() {
       directMemberOf: group.directMemberOf,
       entryManagedBy: group.entryManagedBy,
     })
-  }
-
-  const loadMembers = async (groupId: string) => {
-    setMembersLoading(true)
-    try {
-      const entries = await fetchGroupMembers(groupId)
-      setMembers(entries)
-      setMembersMessage(null)
-    } catch (error) {
-      setMembersMessage(
-        error instanceof Error ? error.message : t('groups.messages.membersLoadFailed'),
-      )
-    } finally {
-      setMembersLoading(false)
-    }
-  }
-
-  const loadPosix = async (groupId: string) => {
-    try {
-      const token = await fetchGroupUnixToken(groupId)
-      setPosixToken(token)
-      setPosixGid(token.gidnumber ? String(token.gidnumber) : '')
-    } catch (error) {
-      if (isNotFound(error)) {
-        setPosixToken(null)
-        setPosixGid('')
-      } else {
-        setPosixMessage(
-          error instanceof Error ? error.message : t('groups.messages.posixLoadFailed'),
-        )
-      }
-    }
   }
 
   useEffect(() => {
@@ -199,20 +181,14 @@ export default function GroupDetail() {
 
   useEffect(() => {
     if (posixQuery.isError) {
-      if (isNotFound(posixQuery.error)) {
-        setPosixToken(null)
-        setPosixGid('')
-        setPosixMessage(null)
-      } else {
-        setPosixMessage(
-          posixQuery.error instanceof Error ? posixQuery.error.message : t('groups.messages.posixLoadFailed'),
-        )
-      }
+      setPosixMessage(
+        posixQuery.error instanceof Error ? posixQuery.error.message : t('groups.messages.posixLoadFailed'),
+      )
       return
     }
     if (posixQuery.isSuccess) {
       setPosixToken(posixQuery.data)
-      setPosixGid(posixQuery.data.gidnumber ? String(posixQuery.data.gidnumber) : '')
+      setPosixGid(posixQuery.data?.gidnumber ? String(posixQuery.data.gidnumber) : '')
       setPosixMessage(null)
     }
   }, [posixQuery.data, posixQuery.error, posixQuery.isError, posixQuery.isSuccess, t])
@@ -327,7 +303,7 @@ export default function GroupDetail() {
     try {
       await addGroupMembers(groupMeta.uuid, [nextMember])
       setMemberValue('')
-      await loadMembers(groupMeta.uuid)
+      await membersQuery.refetch()
     } catch (error) {
       setMembersMessage(
         error instanceof Error ? error.message : t('groups.messages.memberAddFailed'),
@@ -351,7 +327,7 @@ export default function GroupDetail() {
     setMembersMessage(null)
     try {
       await removeGroupMembers(groupMeta.uuid, [member])
-      await loadMembers(groupMeta.uuid)
+      await membersQuery.refetch()
     } catch (error) {
       setMembersMessage(
         error instanceof Error ? error.message : t('groups.messages.memberRemoveFailed'),
@@ -386,7 +362,7 @@ export default function GroupDetail() {
     setPosixMessage(null)
     try {
       await setGroupUnix(groupMeta.uuid, { gidnumber: gid })
-      await loadPosix(groupMeta.uuid)
+      await posixQuery.refetch()
       setPosixMessage(t('groups.messages.posixUpdated'))
     } catch (error) {
       setPosixMessage(

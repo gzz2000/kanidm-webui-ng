@@ -117,6 +117,7 @@ export default function Oauth2ClientDetail() {
   const [secretLoading, setSecretLoading] = useState(false)
   const [imageVersion, setImageVersion] = useState(0)
   const [imageSrc, setImageSrc] = useState<string | null>(null)
+  const [configCopyTip, setConfigCopyTip] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [scopeConfirmGroup, setScopeConfirmGroup] = useState<string | null>(null)
   const [supScopeConfirmGroup, setSupScopeConfirmGroup] = useState<string | null>(null)
@@ -283,6 +284,29 @@ export default function Oauth2ClientDetail() {
       return true
     }
     return false
+  }
+
+  const integrationItems = useMemo(() => {
+    if (!client) return []
+    const origin = window.location.origin
+    const clientId = encodeURIComponent(client.name)
+    const issuer = `${origin}/oauth2/openid/${clientId}`
+    return [
+      { key: 'clientId', label: t('oauth2.integration.clientId'), value: client.name },
+      { key: 'issuer', label: t('oauth2.integration.issuer'), value: issuer },
+      { key: 'authorizeUi', label: t('oauth2.integration.authorizeUi'), value: `${origin}/oauth2-ui/authorise` },
+      { key: 'token', label: t('oauth2.integration.token'), value: `${issuer}/token` },
+      { key: 'userinfo', label: t('oauth2.integration.userinfo'), value: `${issuer}/userinfo` },
+      { key: 'jwks', label: t('oauth2.integration.jwks'), value: `${issuer}/public_key.jwk` },
+      { key: 'introspect', label: t('oauth2.integration.introspect'), value: `${issuer}/introspect` },
+      { key: 'revoke', label: t('oauth2.integration.revoke'), value: `${issuer}/token/revoke` },
+    ]
+  }, [client, t])
+
+  const handleConfigCopy = async (key: string, value: string) => {
+    await navigator.clipboard.writeText(value)
+    setConfigCopyTip(key)
+    window.setTimeout(() => setConfigCopyTip((current) => (current === key ? null : current)), 1600)
   }
 
   const refreshClientMaps = useCallback(
@@ -1402,6 +1426,33 @@ export default function Oauth2ClientDetail() {
             )}
           </div>
         )}
+
+        <div className="panel-card">
+          <header>
+            <h2>{t('oauth2.integration.title')}</h2>
+            <p>{t('oauth2.integration.subtitle')}</p>
+          </header>
+          <div className="oauth2-integration-list">
+            {integrationItems.map((item) => (
+              <div className="oauth2-integration-row" key={item.key}>
+                <span className="oauth2-integration-label">{item.label}</span>
+                <div className="oauth2-integration-main">
+                  <code className="oauth2-integration-value">{item.value}</code>
+                  <div className="oauth2-integration-actions">
+                    <button
+                      className="link-button"
+                      type="button"
+                      onClick={() => void handleConfigCopy(item.key, item.value)}
+                    >
+                      {t('oauth2.actions.copy')}
+                    </button>
+                    {configCopyTip === item.key && <span className="copy-tip">{t('oauth2.actions.copied')}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <div className="panel-card">
           <header>
