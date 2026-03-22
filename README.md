@@ -89,6 +89,16 @@ server {
     # API and oauth endpoints proxied to kanidmd
     location /v1/ { proxy_pass $kanidm_upstream; }
     location /scim/ { proxy_pass $kanidm_upstream; }
+    # Rewrite OpenID discovery URL for oauth2 apps
+    location ~ ^/oauth2/openid/[^/]+/\.well-known/openid-configuration$ {
+        proxy_pass $kanidm_upstream;
+        # Disable compression for sub_filter to work
+        proxy_set_header Accept-Encoding "";
+        sub_filter_once off;
+        sub_filter_types application/json;
+        # Adjust old endpoint -> new UI endpoint
+        sub_filter '/ui/oauth2' '/oauth2-ui/authorise';
+    }
     location /oauth2/ { proxy_pass $kanidm_upstream; }
     location /ui/ { proxy_pass $kanidm_upstream; }
     location = /manifest.webmanifest { proxy_pass $kanidm_upstream; }

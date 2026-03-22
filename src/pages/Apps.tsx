@@ -66,13 +66,6 @@ export default function Apps() {
     previousUrlsRef.current = next
   }, [appImageUrls])
 
-  useEffect(() => {
-    return () => {
-      Object.values(previousUrlsRef.current).forEach((url) => URL.revokeObjectURL(url))
-      previousUrlsRef.current = {}
-    }
-  }, [])
-
   return (
     <section className="page apps-page">
       <header>

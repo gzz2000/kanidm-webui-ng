@@ -336,6 +336,19 @@
   grid-template-columns: minmax(0, 1fr) minmax(180px, 1fr);
 }
 
+.oauth2-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.oauth2-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
 .oauth2-page .oauth2-row,
 .oauth2-page .token-row,
 .oauth2-page .oauth2-claim-entry {

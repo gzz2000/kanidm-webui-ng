@@ -295,6 +295,11 @@ export default function Oauth2ClientDetail() {
     return [
       { key: 'clientId', label: t('oauth2.integration.clientId'), value: client.name },
       { key: 'issuer', label: t('oauth2.integration.issuer'), value: issuer },
+      {
+        key: 'discovery',
+        label: t('oauth2.integration.discovery'),
+        value: `${issuer}/.well-known/openid-configuration`,
+      },
       { key: 'authorizeUi', label: t('oauth2.integration.authorizeUi'), value: `${origin}/oauth2-ui/authorise` },
       { key: 'token', label: t('oauth2.integration.token'), value: `${issuer}/token` },
       { key: 'userinfo', label: t('oauth2.integration.userinfo'), value: `${issuer}/userinfo` },
