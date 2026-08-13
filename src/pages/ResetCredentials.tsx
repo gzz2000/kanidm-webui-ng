@@ -154,7 +154,7 @@ export default function ResetCredentials() {
 
         {!hasSession && (
           <form onSubmit={handleTokenSubmit} className="form-actions">
-            <label className="field">
+            <label className="field mb-12">
               <span>{t('reset.tokenLabel')}</span>
               <input
                 value={token}
