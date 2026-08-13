@@ -184,6 +184,16 @@
   margin-top: 10px;
 }
 
+.system-page .token-row > div:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+}
+
+.system-page .token-row{
+  flex-direction: column;
+}
+
 .management-list-page {
   display: grid;
   gap: 16px;
